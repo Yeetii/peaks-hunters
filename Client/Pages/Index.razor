@@ -1,9 +1,31 @@
 ﻿@page "/"
 
-<PageTitle>Index</PageTitle>
+<PageTitle>PeaksHunters</PageTitle>
 
-<h1>Hello, world!</h1>
+<Map @ref="mapRef" MapOptions="@mapOptions"></Map>
 
-Welcome to your new app.
+<style>
+    #mapId {
+        height: 100%;
+        width: 100%;
+        position: fixed;
+    }
+</style>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+@code {
+    private Map mapRef;
+    private MapOptions mapOptions = new MapOptions()
+    {
+        DivId = "mapId",
+        Center = new LatLng(63.4010888, 13.0822241),
+        Zoom = 10,
+        UrlTileLayer = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+	SubOptions = new MapSubOptions()
+        {
+            Attribution = "&copy; <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a>,  <a href='https://opentopomap.org/credits'>OpenTopoMap</a>",
+            TileSize = 256,
+            ZoomOffset = 0,
+            MaxZoom = 18,
+        }
+    };
+}
