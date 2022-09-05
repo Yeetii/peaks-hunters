@@ -1,4 +1,7 @@
 ﻿@page "/"
+@using BlazorApp.Shared
+@inject HttpClient Http
+@inject IMarkerFactory MarkerFactory
 
 <PageTitle>PeaksHunters</PageTitle>
 
@@ -13,6 +16,7 @@
 </style>
 
 @code {
+    private Peak[] peaks = new Peak[]{};
     private Map mapRef;
     private MapOptions mapOptions = new MapOptions()
     {
@@ -28,4 +32,20 @@
             MaxZoom = 18,
         }
     };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            peaks = await Http.GetFromJsonAsync<Peak[]>("/api/Peaks") ?? new Peak[]{};
+            foreach (Peak peak in peaks){
+                var marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef);
+                await marker.BindTooltip(peak.name);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+        }
+    }
 }
