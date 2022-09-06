@@ -2,6 +2,7 @@
 @using BlazorApp.Shared
 @inject HttpClient Http
 @inject IMarkerFactory MarkerFactory
+@inject IIconFactory IconFactory
 
 <PageTitle>PeaksHunters</PageTitle>
 
@@ -38,9 +39,28 @@
         try
         {
             peaks = await Http.GetFromJsonAsync<Peak[]>("/api/Peaks") ?? new Peak[]{};
+            Dictionary<string, List<Activity>> summitedPeaks = await Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks") ?? new Dictionary<string, List<Activity>>();
+            
             foreach (Peak peak in peaks){
-                var marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef);
-                await marker.BindTooltip(peak.name);
+                bool isSummited = summitedPeaks.ContainsKey(peak.id + "");
+
+                string markerColor = isSummited ? "green" : "grey";
+                MarkerOptions markerOptions = new MarkerOptions()
+                    {
+                        Opacity = 1,
+                        Draggable = false,
+                        IconRef = await IconFactory.Create(coloredIconOptions(markerColor)),
+                    };
+
+                var marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef, markerOptions);
+                string alt_name = peak.name_sapmi ?? peak.name_alt;
+                string tooltip = peak.name + (alt_name != null ?  " (" + alt_name + ")" : "") + (peak.elevation != null ? ", " + peak.elevation + "m" : "");
+                await marker.BindTooltip(tooltip);
+
+                if (isSummited){
+                    List<Activity> activities = summitedPeaks[peak.id + ""];
+                    await marker.BindPopup("Climbed " + activities.Count + " times");
+                }
             }
         }
         catch (Exception ex)
@@ -48,4 +68,15 @@
             Console.WriteLine(ex.ToString());
         }
     }
+    public static IconOptions coloredIconOptions(string color){
+        return new IconOptions()
+            {
+                IconUrl = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-" + color + ".png",
+                ShadowUrl = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+                IconSize = new FisSst.BlazorMaps.Point(25, 41),
+                IconAnchor = new FisSst.BlazorMaps.Point(12, 41),
+                PopupAnchor = new FisSst.BlazorMaps.Point(1, -34),
+                ShadowSize = new FisSst.BlazorMaps.Point(41, 41),
+            };
+    } 
 }
