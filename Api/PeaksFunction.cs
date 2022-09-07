@@ -12,7 +12,7 @@ using System.Data;
 using Microsoft.Azure.Documents.Linq;
 
 
-namespace BlazorApp.PeaksFunction
+namespace BlazorApp.Api
 {
     public static class PeaksFunction
     {
@@ -22,7 +22,7 @@ namespace BlazorApp.PeaksFunction
             [CosmosDB(
                 databaseName: "Data",
                 collectionName: "Peaks",
-                ConnectionStringSetting = "CosmosDbConnectionString")]DocumentClient documentClient,
+                ConnectionStringSetting = "PeaksCosmosDbConnectionString")]DocumentClient documentClient,
             ILogger log)
         {
 

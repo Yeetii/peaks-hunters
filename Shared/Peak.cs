@@ -6,6 +6,15 @@ namespace BlazorApp.Shared
     public class Peak {
         public Peak(){}
 
+        public Peak(long id, string elevation, string name, string name_sapmi, string name_alt, Point location){
+            this.id = id;
+            this.elevation = elevation;
+            this.name = name;
+            this.name_sapmi = name_sapmi;
+            this.name_alt = name_alt;
+            this.location = location;
+        }
+
         public long id {get; set;}
         public string elevation {get; set;}
         public string name {get; set;}
