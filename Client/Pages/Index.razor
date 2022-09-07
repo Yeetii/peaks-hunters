@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject IMarkerFactory MarkerFactory
 @inject IIconFactory IconFactory
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
 
 <PageTitle>PeaksHunters</PageTitle>
 
@@ -17,7 +18,6 @@
 </style>
 
 @code {
-    private Peak[] peaks = new Peak[]{};
     private Map mapRef;
     private MapOptions mapOptions = new MapOptions()
     {
@@ -38,9 +38,13 @@
     {
         try
         {
-            peaks = await Http.GetFromJsonAsync<Peak[]>("/api/Peaks") ?? new Peak[]{};
-            Dictionary<string, List<Activity>> summitedPeaks = await Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks") ?? new Dictionary<string, List<Activity>>();
+            var AccessToken = await localStorage.GetItemAsync<string>("access_token");
+            Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>("/api/Peaks");
+            Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + AccessToken);
             
+            Peak[] peaks = await peaksTask ?? new Peak[]{};
+            Dictionary<string, List<Activity>> summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
+
             foreach (Peak peak in peaks){
                 bool isSummited = summitedPeaks.ContainsKey(peak.id + "");
 

@@ -5,4 +5,10 @@
     <RootNamespace>BlazorApp.Shared</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Reference Include="Strava">
+      <HintPath>../Api/libs/IO.Swagger.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

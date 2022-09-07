@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using IO.Swagger.Model;
 namespace BlazorApp.Shared
 
 {
@@ -13,6 +14,38 @@ namespace BlazorApp.Shared
     }
     public class Activity
     {
+        public Activity(){}
+
+        public Activity(DetailedActivity activity) : this((SummaryActivity)activity) {
+            description = activity.Description;
+            calories = activity.Calories;
+            polyline = activity.Map.Polyline;
+        }
+
+        public Activity(SummaryActivity activity) {
+            id = activity.Id;
+            name = activity.Name;
+            description = "";
+            distance = activity.Distance;
+            moving_time = activity.MovingTime;
+            elapsed_time = activity.ElapsedTime;
+            calories = null;
+            total_elevation_gain = activity.TotalElevationGain;
+            elev_high = activity.ElevHigh;
+            elev_low = activity.ElevLow;
+            sport_type = activity.SportType.ToString();
+            start_date = activity.StartDate;
+            start_date_local = activity.StartDateLocal;
+            timezone = activity.Timezone;
+            start_latlng = activity.StartLatlng;
+            end_latlng = activity.EndLatlng;
+            athlete_count = activity.AthleteCount;
+            average_speed = activity.AverageSpeed;
+            max_speed = activity.MaxSpeed;
+            summary_polyline = activity.Map.SummaryPolyline;
+        }
+
+
         public long? id {get; set;}
         public string name {get; set;}
         public string description {get; set;}
