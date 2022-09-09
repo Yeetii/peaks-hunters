@@ -4,6 +4,7 @@
 @inject IMarkerFactory MarkerFactory
 @inject IIconFactory IconFactory
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager NavManager
 
 <PageTitle>PeaksHunters</PageTitle>
 
@@ -38,32 +39,40 @@
     {
         try
         {
-            var AccessToken = await localStorage.GetItemAsync<string>("access_token");
-            Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>("/api/Peaks");
-            Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + AccessToken);
-            
-            Peak[] peaks = await peaksTask ?? new Peak[]{};
-            Dictionary<string, List<Activity>> summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
+            StravaTokens? tokens = await localStorage.GetItemAsync<StravaTokens>("strava_tokens");
 
-            foreach (Peak peak in peaks){
-                bool isSummited = summitedPeaks.ContainsKey(peak.id + "");
+            if (tokens == null || tokens.access_token == null){
+                NavManager.NavigateTo("/authenticate");
+            } else if (DateTimeOffset.Now > DateTimeOffset.FromUnixTimeSeconds(tokens.expires_at)){
+                Console.WriteLine("TODO USE REFRESH TOKEN!");
+                NavManager.NavigateTo("/authenticate");
+            } else {
+                Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>("/api/Peaks");
+                Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + tokens.access_token);
+                
+                Peak[] peaks = await peaksTask ?? new Peak[]{};
+                Dictionary<string, List<Activity>> summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
 
-                string markerColor = isSummited ? "green" : "grey";
-                MarkerOptions markerOptions = new MarkerOptions()
-                    {
-                        Opacity = 1,
-                        Draggable = false,
-                        IconRef = await IconFactory.Create(coloredIconOptions(markerColor)),
-                    };
+                foreach (Peak peak in peaks){
+                    bool isSummited = summitedPeaks.ContainsKey(peak.id + "");
 
-                var marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef, markerOptions);
-                string alt_name = peak.name_sapmi ?? peak.name_alt;
-                string tooltip = peak.name + (alt_name != null ?  " (" + alt_name + ")" : "") + (peak.elevation != null ? ", " + peak.elevation + "m" : "");
-                await marker.BindTooltip(tooltip);
+                    string markerColor = isSummited ? "green" : "grey";
+                    MarkerOptions markerOptions = new MarkerOptions()
+                        {
+                            Opacity = 1,
+                            Draggable = false,
+                            IconRef = await IconFactory.Create(coloredIconOptions(markerColor)),
+                        };
 
-                if (isSummited){
-                    List<Activity> activities = summitedPeaks[peak.id + ""];
-                    await marker.BindPopup("Climbed " + activities.Count + " times");
+                    var marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef, markerOptions);
+                    string alt_name = peak.name_sapmi ?? peak.name_alt;
+                    string tooltip = peak.name + (alt_name != null ?  " (" + alt_name + ")" : "") + (peak.elevation != null ? ", " + peak.elevation + "m" : "");
+                    await marker.BindTooltip(tooltip);
+
+                    if (isSummited){
+                        List<Activity> activities = summitedPeaks[peak.id + ""];
+                        await marker.BindPopup("Climbed " + activities.Count + " times");
+                    }
                 }
             }
         }

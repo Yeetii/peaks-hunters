@@ -1,0 +1,27 @@
+@page "/authenticate/{action?}"
+@using Microsoft.AspNetCore.WebUtilities
+@using BlazorApp.Shared
+@inject NavigationManager NavManager
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+
+
+@code {
+    [Parameter]
+    public string? Action {get; set;}
+    protected override async Task OnInitializedAsync(){
+        if (Action == "callback"){
+            var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("code", out var code))
+            {
+                StravaTokens? tokens = await Http.GetFromJsonAsync<StravaTokens?>("/api/Authenticate?code=" + code);
+                await localStorage.SetItemAsync<StravaTokens>("strava_tokens", tokens);
+                NavManager.NavigateTo("/");
+            }
+
+        }else{
+            NavManager.NavigateTo($"https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri=http://localhost:5000/authenticate/callback&scope=activity:read", forceLoad: true);
+        }
+    }
+}
