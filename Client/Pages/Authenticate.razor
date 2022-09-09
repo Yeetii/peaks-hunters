@@ -21,7 +21,7 @@
             }
 
         }else{
-            NavManager.NavigateTo($"https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri=http://localhost:5000/authenticate/callback&scope=activity:read", forceLoad: true);
+            NavManager.NavigateTo($"https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri=" + NavManager.Uri + "/callback&scope=activity:read", forceLoad: true);
         }
     }
 }
