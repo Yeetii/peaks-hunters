@@ -16,8 +16,13 @@
             if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("code", out var code))
             {
                 StravaTokens? tokens = await Http.GetFromJsonAsync<StravaTokens?>("/api/Authenticate?code=" + code);
-                await localStorage.SetItemAsync<StravaTokens>("strava_tokens", tokens);
-                NavManager.NavigateTo("/");
+                if (tokens != null){
+                    await localStorage.SetItemAsync<StravaTokens>("strava_tokens", tokens);
+                    NavManager.NavigateTo("/");
+                } else {
+                    Console.WriteLine("Did not retrieve any tokens, retrying");
+                    NavManager.NavigateTo("/authenticate");
+                }
             }
 
         }else{

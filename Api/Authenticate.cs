@@ -20,6 +20,9 @@ namespace BlazorApp.Api
         {
             string code = req.Query["code"];
             string clientSecret = Environment.GetEnvironmentVariable($"StravaClientSecret", EnvironmentVariableTarget.Process);
+            if (string.IsNullOrEmpty(clientSecret)){
+                return new NotFoundObjectResult("clientSecret not found");
+            }
             HttpResponseMessage result = await client.PostAsync("https://www.strava.com/oauth/token?client_id=26280&client_secret=" + clientSecret + "&code=" + code + "&grant_type=authorization_code", null);
             string resultString = await result.Content.ReadAsStringAsync();
             return new OkObjectResult(resultString);
