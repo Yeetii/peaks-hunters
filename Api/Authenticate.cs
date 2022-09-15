@@ -19,12 +19,9 @@ namespace BlazorApp.Api
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            string code = req.Query["code"];
-            string clientSecret = req.Query["secret"];
+            string code = req.Query["auth_code"];
             try {
-                if (string.IsNullOrEmpty(clientSecret)){
-                    clientSecret = Environment.GetEnvironmentVariable($"StravaClientSecret", EnvironmentVariableTarget.Process);
-                }
+                string clientSecret = Environment.GetEnvironmentVariable($"StravaClientSecret", EnvironmentVariableTarget.Process);
                 HttpResponseMessage result = await client.PostAsync("https://www.strava.com/oauth/token?client_id=26280&client_secret=" + clientSecret + "&code=" + code + "&grant_type=authorization_code", null);
                 string resultString = await result.Content.ReadAsStringAsync();
                 return new OkObjectResult(resultString);
