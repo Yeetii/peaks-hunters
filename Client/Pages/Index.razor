@@ -51,26 +51,23 @@
                 Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + tokens.access_token);
                 
                 Peak[] peaks = await peaksTask ?? new Peak[]{};
+
+                Dictionary<string, Marker> markers = new Dictionary<string, Marker>();
+
+                foreach (Peak peak in peaks){
+                    Marker marker = await createPeakMarker(peak, "grey");
+                    markers.Add(peak.id + "", marker);
+                }
+
                 Dictionary<string, List<Activity>> summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
 
                 foreach (Peak peak in peaks){
-                    bool isSummited = summitedPeaks.ContainsKey(peak.id + "");
-
-                    string markerColor = isSummited ? "green" : "grey";
-                    MarkerOptions markerOptions = new MarkerOptions()
-                        {
-                            Opacity = 1,
-                            Draggable = false,
-                            IconRef = await IconFactory.Create(coloredIconOptions(markerColor)),
-                        };
-
-                    var marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef, markerOptions);
-                    string alt_name = peak.name_sapmi ?? peak.name_alt;
-                    string tooltip = peak.name + (alt_name != null ?  " (" + alt_name + ")" : "") + (peak.elevation != null ? ", " + peak.elevation + "m" : "");
-                    await marker.BindTooltip(tooltip);
-
-                    if (isSummited){
-                        List<Activity> activities = summitedPeaks[peak.id + ""];
+                    string peakId = peak.id + "";
+                    if (summitedPeaks.ContainsKey(peakId)){
+                        await markers[peakId].Remove();
+                        Marker marker = await createPeakMarker(peak, "green");
+                        markers[peakId] = marker;
+                        List<Activity> activities = summitedPeaks[peakId];
                         await marker.BindPopup("Climbed " + activities.Count + " times");
                     }
                 }
@@ -92,4 +89,22 @@
                 ShadowSize = new FisSst.BlazorMaps.Point(41, 41),
             };
     } 
+
+    public async Task<MarkerOptions> coloredMarkerOptions(string color){
+        return new MarkerOptions()
+            {
+                Opacity = 1,
+                Draggable = false,
+                IconRef = await IconFactory.Create(coloredIconOptions(color)),
+            };
+    }
+
+    public async Task<Marker> createPeakMarker(Peak peak, string markerColor){
+        MarkerOptions markerOptions = await coloredMarkerOptions(markerColor);
+        Marker marker = await MarkerFactory.CreateAndAddToMap(new LatLng(peak.location.coordinates[1], peak.location.coordinates[0]), mapRef, markerOptions);
+        string alt_name = peak.name_sapmi ?? peak.name_alt;
+        string tooltip = peak.name + (alt_name != null ?  " (" + alt_name + ")" : "") + (peak.elevation != null ? ", " + peak.elevation + "m" : "");
+        await marker.BindTooltip(tooltip);
+        return marker;
+    }
 }
