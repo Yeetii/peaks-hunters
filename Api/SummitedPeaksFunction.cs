@@ -34,7 +34,7 @@ namespace BlazorApp.Api
                 }
             }
             
-            Task<List<Shared.Activity>> activitiesTask = Task<List<Shared.Activity>>.Factory.StartNew(() => FetchAllActivities(req.Query["access_token"]));
+            Task<List<Shared.Activity>> activitiesTask = Task<List<Shared.Activity>>.Factory.StartNew(() => FetchAllActivities(req.Query["access_token"], log));
             Task<Shared.Peak[]> peaksTask = HttpClientJsonExtensions.GetFromJsonAsync<Shared.Peak[]>(client, "/api/Peaks");
 
             Shared.Peak[] allPeaks = await peaksTask ?? new Shared.Peak[]{};
@@ -45,7 +45,7 @@ namespace BlazorApp.Api
             return new OkObjectResult(summitedPeaks);
         }
 
-        private static List<Shared.Activity> FetchAllActivities(string AccessToken){
+        private static List<Shared.Activity> FetchAllActivities(string AccessToken, ILogger log){
             Configuration.Default.AccessToken = AccessToken;
             var apiInstance = new ActivitiesApi();
 
@@ -53,9 +53,13 @@ namespace BlazorApp.Api
             int page = 1;
             while (true){
                 List<Strava.Model.SummaryActivity> results = apiInstance.GetLoggedInAthleteActivities(page: page, perPage: 200);
-                
+
                 foreach (Strava.Model.SummaryActivity result in results) {
-                    activities.Add(new Shared.Activity(result));
+                    try {
+                        activities.Add(new Shared.Activity(result));
+                    } catch {
+                        log.LogError("Activity id: " + result.Id + " could not be parsed!");
+                    }
                 }
 
                 if (results.Count < 200) {
