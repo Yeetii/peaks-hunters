@@ -68,7 +68,11 @@
                         Marker marker = await createPeakMarker(peak, "green");
                         markers[peakId] = marker;
                         List<Activity> activities = summitedPeaks[peakId];
-                        await marker.BindPopup("Climbed " + activities.Count + " times");
+                        string activityIds = string.Join(", ", activities.Select(x => "<a href=https://www.strava.com/activities/" + x.id + ">" + x.id + "</a>"));
+                        string popupMessage = $@"Climbed {activities.Count} time{((activities.Count > 1) ? 's' : ' ')} <br>
+                                                Activity ids: {activityIds}";
+                        await marker.BindPopup(popupMessage);
+                        
                     }
                 }
             }
