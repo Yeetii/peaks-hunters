@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -5,11 +6,8 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using Microsoft.Azure.Documents.Client;
 using System.Linq;
-using System;
-using System.Data;
-using Microsoft.Azure.Documents.Linq;
+using Microsoft.Azure.Cosmos;
 
 
 namespace BlazorApp.Api
@@ -21,33 +19,60 @@ namespace BlazorApp.Api
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             [CosmosDB(
                 databaseName: "Data",
-                collectionName: "Peaks",
-                ConnectionStringSetting = "PeaksCosmosDbConnectionString")]DocumentClient documentClient,
+                containerName: "Peaks",
+                Connection = "PeaksCosmosDbConnectionString")]CosmosClient client,
             ILogger log)
         {
+            List<BlazorApp.Shared.CosmosPeak> cosmosPeaks;
 
+            string lat = req.Query["lat"].ToString();
+            string lon = req.Query["lon"].ToString();
+            int radius;
+            int defaultRadius = 40000;
+            if (!int.TryParse(req.Query["radius"], out radius)){
+                radius = defaultRadius;
+            };
 
-            List<BlazorApp.Shared.CosmosPeak> cosmosPeaks = await FetchWholeCollection<BlazorApp.Shared.CosmosPeak>("Peaks", documentClient);
-            BlazorApp.Shared.Peak[] allPeaks = cosmosPeaks.Select(x => x.peak).ToArray();
-            return new OkObjectResult(allPeaks);
+            if (!(string.IsNullOrEmpty(lat) || string.IsNullOrEmpty(lon))){
+                cosmosPeaks = await GeoSpatialFetch<BlazorApp.Shared.CosmosPeak>(client, lat, lon, radius);
+            } else {
+                cosmosPeaks = await FetchWholeCollection<BlazorApp.Shared.CosmosPeak>(client);
+            }
+
+            BlazorApp.Shared.Peak[] peaks = cosmosPeaks.Select(x => x.peak).ToArray();
+            return new OkObjectResult(peaks);
             
         }
-        public static async Task<List<T>> FetchWholeCollection<T>(string collectionName, DocumentClient client){
-            var option = new FeedOptions { EnableCrossPartitionQuery = true };
-            Uri collectionUri = UriFactory.CreateDocumentCollectionUri("Data", collectionName);
-            IDocumentQuery<T> query = client.CreateDocumentQuery<T>(collectionUri, option)
-                .Where(p => true)
-                .AsDocumentQuery();
 
-            List<T> allDocuments = new List<T>();
-            while (query.HasMoreResults)
+        public static async Task<List<T>> GeoSpatialFetch<T>(CosmosClient client, string lat, string lon, int radius){
+            string query = String.Join(Environment.NewLine, 
+            "SELECT *", 
+            "FROM p",
+            $"WHERE ST_DISTANCE(p.peak.location, {{'type': 'Point', 'coordinates':[{lon}, {lat}]}}) < {radius}");
+
+            return await QueryCollection<T>(client, query);
+        }
+
+        public static async Task<List<T>> FetchWholeCollection<T>(CosmosClient client){
+            return await QueryCollection<T>(client, "SELECT * FROM p");
+        }
+
+        public static async Task<List<T>> QueryCollection<T>(CosmosClient client, string query){
+            List<T> documents = new List<T>();
+
+            Container container = client.GetDatabase("Data").GetContainer("Peaks");
+            QueryDefinition queryDefinition = new QueryDefinition(query);
+            using (FeedIterator<T> resultSet = container.GetItemQueryIterator<T>(queryDefinition))
             {
-                foreach (T document in await query.ExecuteNextAsync())
+                while (resultSet.HasMoreResults)
                 {
-                    allDocuments.Add(document);
+                    Microsoft.Azure.Cosmos.FeedResponse<T> response = await resultSet.ReadNextAsync();
+                    foreach (T peak in response){
+                        documents.Add(peak);
+                    }
                 }
             }
-            return allDocuments;
+            return documents;
         }
     }
 }

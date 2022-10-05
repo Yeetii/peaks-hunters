@@ -47,7 +47,7 @@
                 Console.WriteLine("TODO USE REFRESH TOKEN!");
                 NavManager.NavigateTo("/authenticate");
             } else {
-                Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>("/api/Peaks");
+                Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>("/api/Peaks?lat=63.4010888&lon=13.0822241&radius=60000");
                 Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + tokens.access_token);
                 
                 Peak[] peaks = await peaksTask ?? new Peak[]{};
