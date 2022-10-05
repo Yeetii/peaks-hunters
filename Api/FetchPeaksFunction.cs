@@ -56,8 +56,8 @@ namespace BlazorApp.Api
         [FunctionName("FetchPeaks")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            [CosmosDB(databaseName: "Data", collectionName: "Peaks",
-            ConnectionStringSetting = "PeaksCosmosDbConnectionString"
+            [CosmosDB(databaseName: "Data", containerName: "Peaks",
+            Connection = "PeaksCosmosDbConnectionString"
             )]IAsyncCollector<dynamic> documentsOut,
             ILogger log)
         {
