@@ -76,12 +76,6 @@
     private async Task HandleMouseEvent(MouseEvent mouseEvent, List<LatLng> queriedLocations)
     {
         LatLng center = await mapRef.GetCenter();
-        await FetchPeaks(center, queriedLocations);
-        await UpdateMarkers();
-    }
-
-    private async Task FetchPeaks(LatLng center, List<LatLng> queriedLocations)
-    {
         foreach (LatLng fetchedCenter in queriedLocations){
             Coordinate fetchCenter = new Coordinate(center.Lat, center.Lng);
             Coordinate previousFetchCenter = new Coordinate(fetchedCenter.Lat, fetchedCenter.Lng);
@@ -90,6 +84,12 @@
                 return;
             }
         }
+        await FetchPeaks(center, queriedLocations);
+        await UpdateMarkers();
+    }
+
+    private async Task FetchPeaks(LatLng center, List<LatLng> queriedLocations)
+    {
         string lat = center.Lat.ToString(CultureInfo.InvariantCulture);
         string lng = center.Lng.ToString(CultureInfo.InvariantCulture);
         Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>($"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
