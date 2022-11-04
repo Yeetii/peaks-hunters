@@ -26,6 +26,7 @@ Once you clone the project, open the solution in [Visual Studio 2022](https://vi
 1. In the VS Code terminal, run the following command to start the Static Web Apps CLI, along with the Blazor WebAssembly client application and the Functions API app:
 
     ```bash
+    nvm use 16
     swa start http://localhost:5000 --run "dotnet run --project Client/Client.csproj" --api-location Api
     ```
 
