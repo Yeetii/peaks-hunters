@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using BlazorApp.Shared
+@using System.Globalization
 @inject HttpClient Http
 @inject IMarkerFactory MarkerFactory
 @inject IIconFactory IconFactory
@@ -20,10 +21,15 @@
 
 @code {
     private Map mapRef;
+    private static LatLng center = new LatLng(63.4010888, 13.0822241);
+    private int fetchRadius = 60000;
+    Peak[] peaks = new Peak[]{};
+    Dictionary<string, List<Activity>> summitedPeaks = new Dictionary<string, List<Activity>>(); 
+    Dictionary<string, Marker> markers = new Dictionary<string, Marker>();
     private MapOptions mapOptions = new MapOptions()
     {
         DivId = "mapId",
-        Center = new LatLng(63.4010888, 13.0822241),
+        Center = center,
         Zoom = 10,
         UrlTileLayer = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
 	SubOptions = new MapSubOptions()
@@ -47,34 +53,15 @@
                 Console.WriteLine("TODO USE REFRESH TOKEN!");
                 NavManager.NavigateTo("/authenticate");
             } else {
-                Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>("/api/Peaks?lat=63.4010888&lon=13.0822241&radius=60000");
                 Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + tokens.access_token);
                 
-                Peak[] peaks = await peaksTask ?? new Peak[]{};
+                Task peaksTask = FetchPeaks(center);
 
-                Dictionary<string, Marker> markers = new Dictionary<string, Marker>();
-
-                foreach (Peak peak in peaks){
-                    Marker marker = await createPeakMarker(peak, "grey");
-                    markers.Add(peak.id + "", marker);
-                }
-
-                Dictionary<string, List<Activity>> summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
-
-                foreach (Peak peak in peaks){
-                    string peakId = peak.id + "";
-                    if (summitedPeaks.ContainsKey(peakId)){
-                        await markers[peakId].Remove();
-                        Marker marker = await createPeakMarker(peak, "green");
-                        markers[peakId] = marker;
-                        List<Activity> activities = summitedPeaks[peakId];
-                        string activityIds = string.Join(", ", activities.Select(x => "<a href=https://www.strava.com/activities/" + x.id + ">" + x.id + "</a>"));
-                        string popupMessage = $@"Climbed {activities.Count} time{((activities.Count > 1) ? 's' : ' ')} <br>
-                                                Activity ids: {activityIds}";
-                        await marker.BindPopup(popupMessage);
-                        
-                    }
-                }
+                await peaksTask;
+                await mapRef.OnMouseUp(async (MouseEvent mouseEvent) => await HandleMouseEvent(mouseEvent));
+                await UpdateMarkers();
+                summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
+                await UpdateMarkers();
             }
         }
         catch (Exception ex)
@@ -82,7 +69,57 @@
             Console.WriteLine(ex.ToString());
         }
     }
-    public static IconOptions coloredIconOptions(string color){
+
+    private async Task HandleMouseEvent(MouseEvent mouseEvent)
+    {
+        center = await mapRef.GetCenter();
+        await FetchPeaks(center);
+        await UpdateMarkers();
+    }
+
+    private async Task FetchPeaks(LatLng center)
+    {
+        // Todo cancel fetch if already fetched
+        string lat = center.Lat.ToString(CultureInfo.InvariantCulture);
+        string lng = center.Lng.ToString(CultureInfo.InvariantCulture);
+        Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>($"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
+        peaks = await peaksTask ?? new Peak[]{};
+    }
+
+    private async Task UpdateMarkers()
+    {
+        foreach (Peak peak in peaks){
+            string peakId = peak.id + "";
+            if (summitedPeaks.ContainsKey(peakId)){
+                List<Activity> activities = summitedPeaks[peakId];
+                string activityIds = string.Join(", ", activities.Select(x => "<a href=https://www.strava.com/activities/" + x.id + ">" + x.id + "</a>"));
+                string popupMessage = $@"Climbed {activities.Count} time{((activities.Count > 1) ? 's' : ' ')} <br>
+                                        Activity ids: {activityIds}";
+
+                await UpdateMarker(peak, "green", popupMessage);
+            } else {
+                await UpdateMarker(peak, "grey", "");
+            }
+        }
+    }
+
+    private async Task UpdateMarker(Peak peak, String color, String popupMessage){
+        string peakId = peak.id + "";
+        if (markers.ContainsKey(peakId))
+        {
+            await markers[peakId].Remove();
+            markers.Remove(peakId);
+        }
+        Marker marker = await createPeakMarker(peak, color);
+        if (!String.IsNullOrEmpty(popupMessage))
+        {
+            await marker.BindPopup(popupMessage);
+        }
+        markers.TryAdd(peak.id + "", marker);
+    }
+
+    public static IconOptions coloredIconOptions(string color)
+    {
         return new IconOptions()
             {
                 IconUrl = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-" + color + ".png",
@@ -94,7 +131,8 @@
             };
     } 
 
-    public async Task<MarkerOptions> coloredMarkerOptions(string color){
+    public async Task<MarkerOptions> coloredMarkerOptions(string color)
+    {
         return new MarkerOptions()
             {
                 Opacity = 1,
