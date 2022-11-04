@@ -21,15 +21,16 @@
 
 @code {
     private Map mapRef;
-    private static LatLng center = new LatLng(63.4010888, 13.0822241);
+    private static LatLng initialCenter = new LatLng(63.4010888, 13.0822241);
     private int fetchRadius = 60000;
+    private double cancelFetchZone = 0.3; // Cancel a new peaks fetch if within cancelFetchZone * fetchRadius
     Peak[] peaks = new Peak[]{};
     Dictionary<string, List<Activity>> summitedPeaks = new Dictionary<string, List<Activity>>(); 
     Dictionary<string, Marker> markers = new Dictionary<string, Marker>();
     private MapOptions mapOptions = new MapOptions()
     {
         DivId = "mapId",
-        Center = center,
+        Center = initialCenter,
         Zoom = 10,
         UrlTileLayer = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
 	SubOptions = new MapSubOptions()
@@ -53,12 +54,14 @@
                 Console.WriteLine("TODO USE REFRESH TOKEN!");
                 NavManager.NavigateTo("/authenticate");
             } else {
+                List<LatLng> queriedLocations = new List<LatLng>();
+
                 Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + tokens.access_token);
                 
-                Task peaksTask = FetchPeaks(center);
+                Task peaksTask = FetchPeaks(initialCenter, queriedLocations);
 
                 await peaksTask;
-                await mapRef.OnMouseUp(async (MouseEvent mouseEvent) => await HandleMouseEvent(mouseEvent));
+                await mapRef.OnMouseUp(async (MouseEvent mouseEvent) => await HandleMouseEvent(mouseEvent, queriedLocations));
                 await UpdateMarkers();
                 summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
                 await UpdateMarkers();
@@ -70,20 +73,28 @@
         }
     }
 
-    private async Task HandleMouseEvent(MouseEvent mouseEvent)
+    private async Task HandleMouseEvent(MouseEvent mouseEvent, List<LatLng> queriedLocations)
     {
-        center = await mapRef.GetCenter();
-        await FetchPeaks(center);
+        LatLng center = await mapRef.GetCenter();
+        await FetchPeaks(center, queriedLocations);
         await UpdateMarkers();
     }
 
-    private async Task FetchPeaks(LatLng center)
+    private async Task FetchPeaks(LatLng center, List<LatLng> queriedLocations)
     {
-        // Todo cancel fetch if already fetched
+        foreach (LatLng fetchedCenter in queriedLocations){
+            Coordinate fetchCenter = new Coordinate(center.Lat, center.Lng);
+            Coordinate previousFetchCenter = new Coordinate(fetchedCenter.Lat, fetchedCenter.Lng);
+            double distance = GeoSpatialFunctions.DistanceTo(fetchCenter, previousFetchCenter);
+            if (distance < fetchRadius * cancelFetchZone){
+                return;
+            }
+        }
         string lat = center.Lat.ToString(CultureInfo.InvariantCulture);
         string lng = center.Lng.ToString(CultureInfo.InvariantCulture);
         Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>($"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
         peaks = await peaksTask ?? new Peak[]{};
+        queriedLocations.Add(center);
     }
 
     private async Task UpdateMarkers()

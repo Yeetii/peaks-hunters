@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 
-namespace BlazorApp.Api
+namespace BlazorApp.Shared
 {
     public class GeoSpatialFunctions
     {
@@ -60,12 +60,12 @@ namespace BlazorApp.Api
         }
 
 
-        public static double DistanceTo(NetTopologySuite.Geometries.Coordinate p1, NetTopologySuite.Geometries.Coordinate p2)
-        {
-            double lat1 = p1.Y;
-            double lon1 = p1.X;
-            double lat2 = p2.Y;
-            double lon2 = p2.X;
+        public static double DistanceTo(Coordinate p1, Coordinate p2)
+        { 
+            double lat1 = p1.lat;
+            double lon1 = p1.lng;
+            double lat2 = p2.lat;
+            double lon2 = p2.lng;
             double rlat1 = Math.PI*lat1/180;
             double rlat2 = Math.PI*lat2/180;
             double theta = lon1 - lon2;
@@ -128,6 +128,16 @@ namespace BlazorApp.Api
 
                 yield return new NetTopologySuite.Geometries.Coordinate(Convert.ToDouble(currentLng) / 1E5, Convert.ToDouble(currentLat) / 1E5);
             }
+        }
+    }
+    public class Coordinate
+    {
+        public double lat {get; set;}
+        public double lng {get; set;}
+
+        public Coordinate(double lat, double lng){
+            this.lat = lat;
+            this.lng = lng;
         }
     }
 }
