@@ -40,7 +40,7 @@ namespace BlazorApp.Api
             Shared.Peak[] allPeaks = await peaksTask ?? new Shared.Peak[]{};
             List<Shared.Activity> activities = await activitiesTask;
 
-            activities = MapPeaksToActivities(activities, allPeaks);
+            activities = MapPeaksToActivities(activities, allPeaks, log);
             Dictionary<string, List<Shared.Activity>> summitedPeaks = ConstructSummitedPeaksDict(activities, allPeaks);
             return new OkObjectResult(summitedPeaks);
         }
@@ -70,17 +70,22 @@ namespace BlazorApp.Api
             return activities;
         }
 
-        private static List<Shared.Activity> MapPeaksToActivities(List<Shared.Activity> activities, Shared.Peak[] allPeaks){
+        private static List<Shared.Activity> MapPeaksToActivities(List<Shared.Activity> activities, Shared.Peak[] allPeaks, ILogger log){
             foreach (Shared.Activity activity in activities){
                 string polyline = activity.polyline ?? activity.summary_polyline;
                 if (String.IsNullOrEmpty(polyline)){
                     continue;
                 }
                 
-                List<Shared.Peak> peaks = GeoSpatialFunctions.FindPeaks(allPeaks, polyline);
-                List<Shared.PeakInfo> peakInfos = peaks.Select(p => new Shared.PeakInfo(p.id + "", p.name)).ToList();
-                
-                activity.peaks = peakInfos;
+                try {
+                    List<Shared.Peak> peaks = GeoSpatialFunctions.FindPeaks(allPeaks, polyline);
+                    List<Shared.PeakInfo> peakInfos = peaks.Select(p => new Shared.PeakInfo(p.id + "", p.name)).ToList();
+                    
+                    activity.peaks = peakInfos;
+                } catch (Exception e){
+                    log.LogError("Activity id: " + activity.id + " could not be mapped to peaks!");
+                    log.LogError(e.ToString());
+                }
             }
             return activities;
         }
