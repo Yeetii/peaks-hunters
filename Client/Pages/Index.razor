@@ -24,7 +24,7 @@
     private static LatLng initialCenter = new LatLng(63.4010888, 13.0822241);
     private int fetchRadius = 60000;
     private double cancelFetchZone = 0.3; // Cancel a new peaks fetch if within cancelFetchZone * fetchRadius
-    Peak[] peaks = new Peak[]{};
+    HashSet<Peak> peaks = new HashSet<Peak>();
     Dictionary<string, List<Activity>> summitedPeaks = new Dictionary<string, List<Activity>>(); 
     Dictionary<string, Marker> markers = new Dictionary<string, Marker>();
     private MapOptions mapOptions = new MapOptions()
@@ -93,7 +93,10 @@
         string lat = center.Lat.ToString(CultureInfo.InvariantCulture);
         string lng = center.Lng.ToString(CultureInfo.InvariantCulture);
         Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>($"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
-        peaks = await peaksTask ?? new Peak[]{};
+        Peak[] newPeaks = await peaksTask ?? new Peak[]{};
+        foreach(Peak peak in newPeaks){
+            peaks.Add(peak);
+        }
         queriedLocations.Add(center);
     }
 
@@ -109,7 +112,9 @@
 
                 await UpdateMarker(peak, "green", popupMessage);
             } else {
-                await UpdateMarker(peak, "grey", "");
+                if (!markers.ContainsKey(peakId)){
+                    await UpdateMarker(peak, "grey", "");
+                }
             }
         }
     }
