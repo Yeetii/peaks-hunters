@@ -31,14 +31,14 @@
     List<LatLng> queriedLocations = new List<LatLng>();
     HashSet<Peak> peaks = new HashSet<Peak>();
     Dictionary<string, List<Activity>> summitedPeaks = new Dictionary<string, List<Activity>>();
-    Dictionary<string, Marker> markers = new Dictionary<string, Marker>();
+    Dictionary<string, Circle> markers = new Dictionary<string, Circle>();
 
     protected override async Task OnInitializedAsync()
     {
         _map = new Map(jsRuntime)
         {
             Center = _startAt,
-            Zoom = 4.8f
+            Zoom = 8f
         };
 
         _map.OnInitialized += () =>
@@ -118,23 +118,23 @@
                 string popupMessage = $@"Climbed {activities.Count} time{((activities.Count > 1) ? 's' : ' ')} <br>
                                         Activity ids: {activityIds}";
 
-                UpdateMarker(peak, "green", popupMessage);
+                UpdateMarker(peak, Color.IndianRed, popupMessage);
             } else {
                 if (!markers.ContainsKey(peakId)){
-                    UpdateMarker(peak, "grey", "");
+                    UpdateMarker(peak, Color.Gray, "");
                 }
             }
         }
     }
 
-    private void UpdateMarker(Peak peak, String color, String popupMessage){
+    private void UpdateMarker(Peak peak, Color color, String popupMessage){
         string peakId = peak.id + "";
         if (markers.ContainsKey(peakId))
         {
             _map.RemoveLayer(markers[peakId]);
             markers.Remove(peakId);
         }
-        Marker marker = createPeakMarker(peak, color);
+        Circle marker = createPeakMarker(peak, color);
         if (!String.IsNullOrEmpty(popupMessage))
         {
             marker.Popup = new Popup{ Content = popupMessage};
@@ -143,27 +143,18 @@
         _map.AddLayer(marker);
     } 
 
-    public Marker createPeakMarker(Peak peak, string markerColor){
+    public Circle createPeakMarker(Peak peak, Color markerColor){
         string alt_name = peak.name_sapmi ?? peak.name_alt;
         string tooltip = peak.name + (alt_name != null ?  " (" + alt_name + ")" : "") + (peak.elevation != null ? ", " + peak.elevation + "m" : "");
-        var marker = new Marker(new LatLng((float)peak.location.coordinates[1], (float)peak.location.coordinates[0]))
-        {
-            Tooltip = new Tooltip { Content = tooltip },
-            Icon = coloredIcon(markerColor)
-        };
+        
+        Circle marker = new Circle();
+        marker.Position = new LatLng((float)peak.location.coordinates[1], (float)peak.location.coordinates[0]);
+        marker.Tooltip = new Tooltip { Content = tooltip };
+        marker.FillColor = markerColor;
+        marker.StrokeColor = markerColor;
+        marker.Fill = true;
+        marker.Radius = 500f;
+
         return marker;
     }
-
-    public Icon coloredIcon(string color)
-    {
-        return new Icon
-            {
-                Url = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-" + color + ".png",
-                ShadowUrl = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-                @* Size = new System.Drawing.Size(25, 41),
-                Anchor = new System.Drawing.Point(12, 41),
-                PopupAnchor = new System.Drawing.Point(1, -34),
-                ShadowSize = new Size(41, 41),  *@
-            };
-    } 
 }
