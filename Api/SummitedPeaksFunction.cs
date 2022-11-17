@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Linq;
+using System.Globalization;
 using BlazorApp.Shared;
 
 
@@ -34,13 +35,10 @@ namespace BlazorApp.Api
             }
             
             Task<List<Shared.Activity>> activitiesTask = Task<List<Shared.Activity>>.Factory.StartNew(() => FetchAllActivities(req.Query["access_token"], log));
-            Task<Shared.Peak[]> peaksTask = HttpClientJsonExtensions.GetFromJsonAsync<Shared.Peak[]>(client, "/api/Peaks");
-
-            Shared.Peak[] allPeaks = await peaksTask ?? new Shared.Peak[]{};
             List<Shared.Activity> activities = await activitiesTask;
 
-            activities = MapPeaksToActivities(activities, allPeaks, log);
-            Dictionary<string, List<Shared.Activity>> summitedPeaks = ConstructSummitedPeaksDict(activities, allPeaks);
+            List<Shared.Activity> activitiesWithSummits = await MapPeaksToActivities(activities, log);
+            Dictionary<string, List<Shared.Activity>> summitedPeaks = ConstructSummitedPeaksDict(activitiesWithSummits);
             return new OkObjectResult(summitedPeaks);
         }
 
@@ -69,30 +67,56 @@ namespace BlazorApp.Api
             return activities;
         }
 
-        private static List<Shared.Activity> MapPeaksToActivities(List<Shared.Activity> activities, Shared.Peak[] allPeaks, ILogger log){
+        private async static Task<List<Shared.Activity>> MapPeaksToActivities(List<Shared.Activity> activities, ILogger log){
+            List<Task<Shared.Activity>> mapPeaksTasks = new List<Task<Activity>>();
             foreach (Shared.Activity activity in activities){
                 string polyline = activity.polyline ?? activity.summary_polyline;
                 if (String.IsNullOrEmpty(polyline)){
                     continue;
                 }
-                
-                try {
-                    List<Shared.Peak> peaks = GeoSpatialFunctions.FindPeaks(allPeaks, polyline);
+                mapPeaksTasks.Add(MapPeaksToActivity(activity, log));
+            }
+            
+            List<Shared.Activity> activitiesWithSummits = new List<Activity>();
+            while (mapPeaksTasks.Any()){
+                Task<Shared.Activity> finishedTask = await Task.WhenAny(mapPeaksTasks);
+                mapPeaksTasks.Remove(finishedTask);
+                Shared.Activity activity = await finishedTask;
+                if (activity.peaks is not null && activity.peaks.Count > 0){
+                    activitiesWithSummits.Add(activity);
+                }
+            }
+            return activitiesWithSummits;
+        }
+
+        private static async Task<Shared.Activity> MapPeaksToActivity(Shared.Activity activity, ILogger log){
+            try {
+                List<float?> startLatLng = activity.start_latlng;
+                float? startLat = startLatLng[0];
+                float? startLng = startLatLng[1];
+                if (activity.distance.HasValue && startLat.HasValue && startLng.HasValue){
+                    string fetchRadius = activity.distance.Value.ToString(CultureInfo.InvariantCulture);
+                    string lat = startLat.Value.ToString(CultureInfo.InvariantCulture);
+                    string lng = startLng.Value.ToString(CultureInfo.InvariantCulture);
+                    string polyline = activity.polyline ?? activity.summary_polyline;
+                    Shared.Peak[] allSurroundingPeaks = await HttpClientJsonExtensions.GetFromJsonAsync<Shared.Peak[]>(client, $"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
+                    
+                    List<Shared.Peak> peaks = GeoSpatialFunctions.FindPeaks(allSurroundingPeaks, polyline);
                     List<Shared.PeakInfo> peakInfos = peaks.Select(p => new Shared.PeakInfo(p.id + "", p.name)).ToList();
                     
                     activity.peaks = peakInfos;
+                } else {
+                    log.LogError("Activity id: " + activity.id + " did not have start_latlng or a distance.");
+                }
                 } catch (Exception e){
                     log.LogError("Activity id: " + activity.id + " could not be mapped to peaks!");
                     log.LogError(e.ToString());
                 }
-            }
-            return activities;
+            return activity;
         }
 
-
-        private static Dictionary<string, List<Shared.Activity>> ConstructSummitedPeaksDict(List<Shared.Activity> activities, Shared.Peak[] allPeaks){
+        private static Dictionary<string, List<Shared.Activity>> ConstructSummitedPeaksDict(List<Shared.Activity> activities){
             Dictionary<string, List<Shared.Activity>> summitedPeaks = new Dictionary<string, List<Shared.Activity>>();
-            activities = activities.FindAll(a => a.peaks != null && a.peaks.Count > 0);
 
             foreach (Shared.Activity activity in activities){
                 List<Shared.PeakInfo> peaks = activity.peaks;
