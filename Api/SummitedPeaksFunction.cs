@@ -33,55 +33,81 @@ namespace BlazorApp.Api
                     client.BaseAddress = new Uri("https://thankful-ground-0e9ac7c03.1.azurestaticapps.net/");
                 }
             }
-            
-            Task<List<Shared.Activity>> activitiesTask = Task<List<Shared.Activity>>.Factory.StartNew(() => FetchAllActivities(req.Query["access_token"], log));
-            List<Shared.Activity> activities = await activitiesTask;
+            // Build list of activity fetching tasks
+            List<Task<List<Activity>>> mapPeaksToActivitiesTasks = new List<Task<List<Activity>>>();
+            bool emptyFetchTask = false;
+            int startPage = 1;
+            int pagesPerRound = 10;
+            while (!emptyFetchTask){
+                List<Task<List<IO.Swagger.Model.SummaryActivity>>> activityFetchTasks = StartActivityFetchTasks(req.Query["access_token"], startPage, pagesPerRound);
+                while (activityFetchTasks.Any()){
+                    Task<List<IO.Swagger.Model.SummaryActivity>> finishedTask = await Task.WhenAny(activityFetchTasks);
+                    activityFetchTasks.Remove(finishedTask);
+                    List<IO.Swagger.Model.SummaryActivity> results = await finishedTask;
+                    if (results.Count > 0){
+                        List<Activity> activities = ParseActivities(results, log);
+                        mapPeaksToActivitiesTasks.Add(MapPeaksToActivities(activities, log));
+                    } else {
+                        emptyFetchTask = true;
+                    }
+                }
+                startPage += pagesPerRound;
+            }
+            // Wait for activity fetching tasks to finish, spin off MapPeaksToActivities on them as they finish
+            List<Activity> activitiesWithSummits = new List<Activity>();
+            while (mapPeaksToActivitiesTasks.Any()){
+                Task<List<Activity>> finishedTask = await Task.WhenAny(mapPeaksToActivitiesTasks);
+                mapPeaksToActivitiesTasks.Remove(finishedTask);
+                activitiesWithSummits = activitiesWithSummits.Concat(await finishedTask).ToList();
+            }
 
-            List<Shared.Activity> activitiesWithSummits = await MapPeaksToActivities(activities, log);
+            log.LogInformation("Activities with summits " + activitiesWithSummits.Count);
+            
             Dictionary<string, List<Shared.Activity>> summitedPeaks = ConstructSummitedPeaksDict(activitiesWithSummits);
+            // Combine results
             return new OkObjectResult(summitedPeaks);
         }
 
-        private static List<Shared.Activity> FetchAllActivities(string AccessToken, ILogger log){
+        // Start *pagesPerRound* tasks, if none return empty start another round
+        private static List<Task<List<IO.Swagger.Model.SummaryActivity>>> StartActivityFetchTasks(string AccessToken, int startPage, int pagesPerRound){
             Configuration.Default.AccessToken = AccessToken;
             var apiInstance = new ActivitiesApi();
+            List<Task<List<IO.Swagger.Model.SummaryActivity>>> fetchTasks = new List<Task<List<IO.Swagger.Model.SummaryActivity>>>();
 
+            for (int page = startPage; page < startPage + pagesPerRound; page++){
+                Task<List<IO.Swagger.Model.SummaryActivity>> fetchTask = apiInstance.GetLoggedInAthleteActivitiesAsync(page: page, perPage: 200);
+                fetchTasks.Add(fetchTask);
+            }
+            return fetchTasks;
+        }
+
+        private static List<Shared.Activity> ParseActivities(List<IO.Swagger.Model.SummaryActivity> swaggerActivities, ILogger log){
             List<Shared.Activity> activities = new List<Shared.Activity>();
-            int page = 1;
-            while (true){
-                List<IO.Swagger.Model.SummaryActivity> results = apiInstance.GetLoggedInAthleteActivities(page: page, perPage: 200);
-
-                foreach (IO.Swagger.Model.SummaryActivity result in results) {
-                    try {
-                        activities.Add(new Shared.Activity(result));
-                    } catch {
-                        log.LogError("Activity id: " + result.Id + " could not be parsed!");
-                    }
+            foreach (IO.Swagger.Model.SummaryActivity result in swaggerActivities) {
+                try {
+                    activities.Add(new Shared.Activity(result));
+                } catch {
+                    log.LogError("Activity id: " + result.Id + " could not be parsed!");
                 }
-
-                if (results.Count < 200) {
-                    break;
-                }
-                page++;
             }
             return activities;
         }
 
-        private async static Task<List<Shared.Activity>> MapPeaksToActivities(List<Shared.Activity> activities, ILogger log){
-            List<Task<Shared.Activity>> mapPeaksTasks = new List<Task<Activity>>();
-            foreach (Shared.Activity activity in activities){
+        private async static Task<List<Activity>> MapPeaksToActivities(List<Activity> activities, ILogger log){
+            List<Task<Activity>> mapPeaksTasks = new List<Task<Activity>>();
+            foreach (Activity activity in activities){
                 string polyline = activity.polyline ?? activity.summary_polyline;
                 if (String.IsNullOrEmpty(polyline)){
                     continue;
                 }
                 mapPeaksTasks.Add(MapPeaksToActivity(activity, log));
             }
-            
-            List<Shared.Activity> activitiesWithSummits = new List<Activity>();
+
+            List<Activity> activitiesWithSummits = new List<Activity>();
             while (mapPeaksTasks.Any()){
-                Task<Shared.Activity> finishedTask = await Task.WhenAny(mapPeaksTasks);
+                Task<Activity> finishedTask = await Task.WhenAny(mapPeaksTasks);
                 mapPeaksTasks.Remove(finishedTask);
-                Shared.Activity activity = await finishedTask;
+                Activity activity = await finishedTask;
                 if (activity.peaks is not null && activity.peaks.Count > 0){
                     activitiesWithSummits.Add(activity);
                 }
