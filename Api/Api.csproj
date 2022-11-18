@@ -21,6 +21,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
-    <ProjectReference Include="libs\strava\src\Strava\Strava.csproj" />
   </ItemGroup>
 </Project>
