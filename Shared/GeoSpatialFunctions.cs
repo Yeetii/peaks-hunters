@@ -139,5 +139,15 @@ namespace BlazorApp.Shared
             this.lat = lat;
             this.lng = lng;
         }
+        public static Coordinate ParseCoordinate(List<float?> latLng){
+            if (!(latLng is null) && latLng.Count >= 2){
+                float? lat = latLng[0];
+                float? lng = latLng[1];
+                if (lat.HasValue && lng.HasValue){
+                    return new Coordinate(lat.Value, lng.Value);
+                }
+            }
+            return null;
+        }
     }
 }
