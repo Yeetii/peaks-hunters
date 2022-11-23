@@ -1,3 +1,4 @@
+using System.Data;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,6 @@ namespace BlazorApp.Api
                     client.BaseAddress = new Uri("https://thankful-ground-0e9ac7c03.1.azurestaticapps.net/");
                 }
             }
-            // Build list of activity fetching tasks
             List<Task<List<Activity>>> mapPeaksToActivitiesTasks = new List<Task<List<Activity>>>();
             bool emptyFetchTask = false;
             int startPage = 1;
@@ -54,18 +54,16 @@ namespace BlazorApp.Api
                 }
                 startPage += pagesPerRound;
             }
-            // Wait for activity fetching tasks to finish, spin off MapPeaksToActivities on them as they finish
             List<Activity> activitiesWithSummits = new List<Activity>();
             while (mapPeaksToActivitiesTasks.Any()){
                 Task<List<Activity>> finishedTask = await Task.WhenAny(mapPeaksToActivitiesTasks);
                 mapPeaksToActivitiesTasks.Remove(finishedTask);
-                activitiesWithSummits = activitiesWithSummits.Concat(await finishedTask).ToList();
+                List<Activity> newMappedOnes = await finishedTask;
+                activitiesWithSummits.AddRange(newMappedOnes);
             }
 
             log.LogInformation("Activities with summits " + activitiesWithSummits.Count);
-            
             Dictionary<string, List<Shared.Activity>> summitedPeaks = ConstructSummitedPeaksDict(activitiesWithSummits);
-            // Combine results
             return new OkObjectResult(summitedPeaks);
         }
 
@@ -96,38 +94,32 @@ namespace BlazorApp.Api
 
         private async static Task<List<Activity>> MapPeaksToActivities(List<Activity> activities, ILogger log){
             List<Task<Activity>> mapPeaksTasks = new List<Task<Activity>>();
+            (Coordinate coordinate, float radius) = CaclulateContainingCircle(activities);
+            string fetchRadius = radius.ToString(CultureInfo.InvariantCulture);
+            string lat = coordinate.lat.ToString(CultureInfo.InvariantCulture);
+            string lng = coordinate.lng.ToString(CultureInfo.InvariantCulture);
+            Peak[] allSurroundingPeaks = await HttpClientJsonExtensions.GetFromJsonAsync<Shared.Peak[]>(client, $"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
+            log.LogInformation("Mapping activities on " + allSurroundingPeaks.Length + " peaks");
+
+            List<Activity> activitiesWithSummits = new List<Activity>();
             foreach (Activity activity in activities){
                 string polyline = activity.polyline ?? activity.summary_polyline;
                 if (String.IsNullOrEmpty(polyline)){
                     continue;
                 }
-                mapPeaksTasks.Add(MapPeaksToActivity(activity, log));
-            }
-
-            List<Activity> activitiesWithSummits = new List<Activity>();
-            while (mapPeaksTasks.Any()){
-                Task<Activity> finishedTask = await Task.WhenAny(mapPeaksTasks);
-                mapPeaksTasks.Remove(finishedTask);
-                Activity activity = await finishedTask;
-                if (activity.peaks is not null && activity.peaks.Count > 0){
-                    activitiesWithSummits.Add(activity);
-                }
+                Activity mappedActivity = MapPeaksToActivity(activity, allSurroundingPeaks, log);
+                if (mappedActivity.peaks is not null && mappedActivity.peaks.Count > 0){
+                    activitiesWithSummits.Add(mappedActivity);
+                } 
             }
             return activitiesWithSummits;
         }
 
-        private static async Task<Shared.Activity> MapPeaksToActivity(Shared.Activity activity, ILogger log){
+        private static Activity MapPeaksToActivity(Shared.Activity activity, Peak[] allSurroundingPeaks, ILogger log){
             try {
-                List<float?> startLatLng = activity.start_latlng;
-                float? startLat = startLatLng[0];
-                float? startLng = startLatLng[1];
-                if (activity.distance.HasValue && startLat.HasValue && startLng.HasValue){
-                    string fetchRadius = activity.distance.Value.ToString(CultureInfo.InvariantCulture);
-                    string lat = startLat.Value.ToString(CultureInfo.InvariantCulture);
-                    string lng = startLng.Value.ToString(CultureInfo.InvariantCulture);
+                Coordinate startCoordinate = Coordinate.ParseCoordinate(activity.start_latlng);
+                if (activity.distance.HasValue && startCoordinate is not null){
                     string polyline = activity.polyline ?? activity.summary_polyline;
-                    Shared.Peak[] allSurroundingPeaks = await HttpClientJsonExtensions.GetFromJsonAsync<Shared.Peak[]>(client, $"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
-                    
                     List<Shared.Peak> peaks = GeoSpatialFunctions.FindPeaks(allSurroundingPeaks, polyline);
                     List<Shared.PeakInfo> peakInfos = peaks.Select(p => new Shared.PeakInfo(p.id + "", p.name)).ToList();
                     
@@ -140,6 +132,30 @@ namespace BlazorApp.Api
                     log.LogError(e.ToString());
                 }
             return activity;
+        }
+
+        // Roughly calculate a circle that contains the entirity of all activities
+        // Problematically large circle for activities that are far apart
+        private static (Coordinate, float) CaclulateContainingCircle(List<Activity> activities){
+            Coordinate coordinate = null;
+            float maxDistance = 0;
+            float maxActivityDistance = 0;
+            foreach (Activity activity in activities){
+                if (coordinate is null){
+                    coordinate = Coordinate.ParseCoordinate(activity.start_latlng);
+                }
+                if ((activity.distance ?? 0) > maxActivityDistance){
+                    maxActivityDistance = activity.distance.Value;
+                }
+                Coordinate activityStartPos = Coordinate.ParseCoordinate(activity.start_latlng);
+                if (activityStartPos is not null && coordinate is not null){
+                    float distance = (float) GeoSpatialFunctions.DistanceTo(coordinate, activityStartPos);
+                    if (distance > maxDistance){
+                        maxDistance = distance;
+                    }
+                }
+            }
+            return (coordinate, maxActivityDistance + maxDistance);
         }
 
         private static Dictionary<string, List<Shared.Activity>> ConstructSummitedPeaksDict(List<Shared.Activity> activities){
