@@ -63,13 +63,13 @@
                 NavManager.NavigateTo("/authenticate");
             } else {
                 Task<Dictionary<string, List<Activity>>?> summitedPeaksTask = Http.GetFromJsonAsync<Dictionary<string, List<Activity>>>("/api/SummitedPeaks?access_token=" + tokens.access_token);
-                
-                Task peaksTask = FetchPeaks(_startAt, queriedLocations);
-
-                await peaksTask;
-                UpdateMarkers();
+                Task<Peak[]> peaksTask = FetchPeaks(_startAt, queriedLocations);
+                    
+                Peak[] startPeaks = await peaksTask;
+                peaks.UnionWith(startPeaks);
+                UpdateMarkers(peaks);
                 summitedPeaks = await summitedPeaksTask ?? new Dictionary<string, List<Activity>>();
-                UpdateMarkers();
+                UpdateMarkers(peaks);
             }
         }
         catch (Exception ex)
@@ -89,26 +89,25 @@
                 return;
             }
         }
-        await FetchPeaks(center, queriedLocations);
-        UpdateMarkers();
+        Peak[] newPeaks = await FetchPeaks(center, queriedLocations);
+        peaks.UnionWith(newPeaks);
+        UpdateMarkers(newPeaks);
     }
     private void OnZoomEnd(object sender, BlazorLeaflet.Models.Events.Event e){
         Console.WriteLine("zoomend");
     }
 
-    private async Task FetchPeaks(LatLng center, List<LatLng> queriedLocations)
+    private async Task<Peak[]> FetchPeaks(LatLng center, List<LatLng> queriedLocations)
     {
         string lat = center.Lat.ToString(CultureInfo.InvariantCulture);
         string lng = center.Lng.ToString(CultureInfo.InvariantCulture);
         Task<Peak[]?> peaksTask = Http.GetFromJsonAsync<Peak[]>($"/api/Peaks?lat={lat}&lon={lng}&radius={fetchRadius}");
         Peak[] newPeaks = await peaksTask ?? new Peak[]{};
-        foreach(Peak peak in newPeaks){
-            peaks.Add(peak);
-        }
         queriedLocations.Add(center);
+        return newPeaks;   
     }
 
-    private void UpdateMarkers()
+    private void UpdateMarkers(IEnumerable<Peak> peaks)
     {
         foreach (Peak peak in peaks){
             string peakId = peak.id + "";
