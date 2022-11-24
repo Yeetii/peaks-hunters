@@ -55,4 +55,17 @@ public class GeoSpatialFunctionsTests
         List<Peak> matches = GeoSpatialFunctions.FindPeaks(peaks, polylineString);
         Assert.Equal("Totthummeln", matches[0].name);
     }
+
+    [Fact]
+    public void DistanceToTest(){
+        Coordinate point1 = new Coordinate(13.09363, 63.39677);
+        Coordinate point2 = new Coordinate(13.09363, 63.39677);
+        Coordinate point3 = new Coordinate(13.11212, 63.40841);
+        double distance = GeoSpatialFunctions.DistanceTo(point1, point2);
+        // Should be 2,4km according to https://www.calculator.net/distance-calculator.html?type=3&la1=13.09363&lo1=63.39677&la2=13.11212&lo2=63.40841&ctype=dec&lad1=38&lam1=53&las1=51.36&lau1=n&lod1=77&lom1=2&los1=11.76&lou1=w&lad2=39&lam2=56&las2=58.56&lau2=n&lod2=75&lom2=9&los2=1.08&lou2=w&x=91&y=12#latlog
+        double distance2 = GeoSpatialFunctions.DistanceTo(point1, point3);
+        Assert.Equal(0, distance);
+        Assert.True(distance2 > 2350);
+        Assert.True(distance2 < 2450);
+    }
 }
