@@ -24,7 +24,9 @@ public class GeoSpatialFunctionsTests
         NetTopologySuite.Geometries.Coordinate point = new NetTopologySuite.Geometries.Coordinate(13.09363, 63.39677);
         float radius = 50;
         NetTopologySuite.Geometries.Polygon box = GeoSpatialFunctions.CalculateBoundingBox(point, radius);
-        double distance = GeoSpatialFunctions.DistanceTo(point, box.Boundary.Coordinates[0]);
+        Coordinate pointCord = new Coordinate(point.X, point.Y);
+        Coordinate boxCord = new Coordinate(box.Coordinates[0].X, box.Coordinates[0].Y);
+        double distance = GeoSpatialFunctions.DistanceTo(pointCord, boxCord);
         Assert.True(distance > radius);
         Assert.True(distance < 2*radius);
     }
