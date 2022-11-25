@@ -52,6 +52,7 @@ namespace BlazorApp.Api
 
     public static class FetchPeaksFunction
     {
+        private const string overpassUri = "https://overpass-api.de/api/interpreter";
         static HttpClient client = new HttpClient();
         [FunctionName("FetchPeaks")]
         public static async Task<IActionResult> Run(
@@ -68,7 +69,7 @@ namespace BlazorApp.Api
             @"            out skel qt;";
             var buffer = System.Text.Encoding.UTF8.GetBytes(body);
             var byteContent = new ByteArrayContent(buffer);
-            var response = await client.PostAsync("https://overpass-api.de/api/interpreter", byteContent);
+            var response = await client.PostAsync(overpassUri, byteContent);
             string rawPeaks = await response.Content.ReadAsStringAsync();
             RootPeaks myDeserializedClass = JsonSerializer.Deserialize<RootPeaks>(rawPeaks);
             Shared.Peak[] peaks = myDeserializedClass.Elements.Select(x => 

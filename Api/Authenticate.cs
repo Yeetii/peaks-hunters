@@ -11,9 +11,10 @@ using System.Net.Http;
 
 namespace BlazorApp.Api
 {
-    public class Authenticate
+    public static class Authenticate
     {
         static HttpClient client = new HttpClient();
+        static string stravaTokenUri = "https://www.strava.com/oauth/token";
         [FunctionName("Authenticate")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
@@ -22,7 +23,7 @@ namespace BlazorApp.Api
             string code = req.Query["auth_code"];
             try {
                 string clientSecret = Environment.GetEnvironmentVariable($"StravaClientSecret", EnvironmentVariableTarget.Process);
-                HttpResponseMessage result = await client.PostAsync("https://www.strava.com/oauth/token?client_id=26280&client_secret=" + clientSecret + "&code=" + code + "&grant_type=authorization_code", null);
+                HttpResponseMessage result = await client.PostAsync(stravaTokenUri + "?client_id=26280&client_secret=" + clientSecret + "&code=" + code + "&grant_type=authorization_code", null);
                 string resultString = await result.Content.ReadAsStringAsync();
                 return new OkObjectResult(resultString);
             } catch (Exception e){
