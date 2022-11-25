@@ -31,7 +31,7 @@ namespace BlazorApp.Api
             int defaultRadius = 40000;
             if (!int.TryParse(req.Query["radius"], out radius)){
                 radius = defaultRadius;
-            };
+            }
 
             if (!(string.IsNullOrEmpty(lat) || string.IsNullOrEmpty(lon))){
                 cosmosPeaks = await GeoSpatialFetch<BlazorApp.Shared.CosmosPeak>(client, lat, lon, radius);

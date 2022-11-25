@@ -20,6 +20,8 @@ namespace BlazorApp.Api
 {
     public static class SummitedPeaksFunction
     {
+        private const string devApiUri = "http://localhost:7071";
+        private const string prodApiUri = "https://thankful-ground-0e9ac7c03.1.azurestaticapps.net/";
         static HttpClient client = new HttpClient();
 
         [FunctionName("SummitedPeaks")]
@@ -29,9 +31,9 @@ namespace BlazorApp.Api
         {
             if (client.BaseAddress == null){
                 if (Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT") == "Development"){
-                    client.BaseAddress = new Uri("http://localhost:7071");
+                    client.BaseAddress = new Uri(devApiUri);
                 } else {
-                    client.BaseAddress = new Uri("https://thankful-ground-0e9ac7c03.1.azurestaticapps.net/");
+                    client.BaseAddress = new Uri(prodApiUri);
                 }
             }
             List<Task<List<Activity>>> mapPeaksToActivitiesTasks = new List<Task<List<Activity>>>();
@@ -92,7 +94,6 @@ namespace BlazorApp.Api
         }
 
         private async static Task<List<Activity>> MapPeaksToActivities(List<Activity> activities, ILogger log){
-            List<Task<Activity>> mapPeaksTasks = new List<Task<Activity>>();
             (Coordinate coordinate, float radius) = CaclulateContainingCircle(activities);
             string fetchRadius = radius.ToString(CultureInfo.InvariantCulture);
             string lat = coordinate.lat.ToString(CultureInfo.InvariantCulture);

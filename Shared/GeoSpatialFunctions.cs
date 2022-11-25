@@ -5,9 +5,8 @@ using System.Net.Http;
 
 namespace BlazorApp.Shared
 {
-    public class GeoSpatialFunctions
+    public static class GeoSpatialFunctions
     {
-        static HttpClient client = new HttpClient();
         public static NetTopologySuite.Geometries.GeometryFactory GetGeometryFactory(){
             NetTopologySuite.NtsGeometryServices.Instance = new NetTopologySuite.NtsGeometryServices(
             // default CoordinateSequenceFactory
@@ -141,10 +140,10 @@ namespace BlazorApp.Shared
         }
         public static Coordinate ParseCoordinate(List<float?> latLng){
             if (!(latLng is null) && latLng.Count >= 2){
-                float? lat = latLng[0];
-                float? lng = latLng[1];
-                if (lat.HasValue && lng.HasValue){
-                    return new Coordinate(lat.Value, lng.Value);
+                float? parsedLat = latLng[0];
+                float? parsedLng = latLng[1];
+                if (parsedLat.HasValue && parsedLng.HasValue){
+                    return new Coordinate(parsedLat.Value, parsedLng.Value);
                 }
             }
             return null;
