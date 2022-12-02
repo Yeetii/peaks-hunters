@@ -10,6 +10,9 @@ using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Linq;
 using System.Net.Http;
+using BlazorApp.Shared;
+using System.Globalization;
+
 
 
 
@@ -61,24 +64,41 @@ namespace BlazorApp.Api
             )]IAsyncCollector<dynamic> documentsOut,
             ILogger log)
         {
+            string peaksQuery = @"node[""natural""=""peak""]";
+            string regionsQuery = @"relation[""boundary""=""administrative""][""admin_level""=""4""]";
+            Coordinate topCord = new Coordinate(62.50826064422815,10.733642578125);
+            Coordinate botCord = new Coordinate(64.3755654235413,15.4742431640625);
+            Task<string> queryPeaksTask = QueryOverpass(peaksQuery, topCord, botCord, log);
+            Task<string> queryRegionsTask = QueryOverpass(regionsQuery, topCord, botCord, log);
+
+            // string rawPeaks = await queryPeaksTask;
+            string rawRegions = await queryRegionsTask;
+            return new OkObjectResult(rawRegions);
+
+            // RootPeaks myDeserializedClass = JsonSerializer.Deserialize<RootPeaks>(rawPeaks);
+            // Shared.Peak[] peaks = myDeserializedClass.Elements.Select(x => 
+            //     new Shared.Peak(x.Id, x.Tags.Ele, x.Tags.Name, x.Tags.NameSma, x.Tags.AltName, new Shared.Point(new double[] {x.Lon, x.Lat}))).ToArray();
+
+            // foreach (Shared.Peak peak in peaks){
+            //     await documentsOut.AddAsync(new Shared.CosmosPeak(peak.id+"", DateTimeOffset.Now, peak));
+            // }
+                
+            // return new OkObjectResult("Added " + peaks.Length + " peaks to the database");
+        }
+        private static async Task<string> QueryOverpass(string query, Coordinate topCorner, Coordinate botCorner, ILogger log){
+            string bbox = topCorner.lat.ToString(CultureInfo.InvariantCulture) + "," + topCorner.lng.ToString(CultureInfo.InvariantCulture) + "," + 
+                botCorner.lat.ToString(CultureInfo.InvariantCulture) + "," + botCorner.lng.ToString(CultureInfo.InvariantCulture);;
             var body = @"[out:json][timeout:25];" + "\n" +
-            @"            node[""natural""=""peak""](62.50826064422815,10.733642578125,64.3755654235413,15.4742431640625);" + "\n" +
-            @"            out body;" + "\n" +
-            @"            >;" + "\n" +
-            @"            out skel qt;";
+                      $@"            {query}({bbox});" + "\n" +
+                       @"            out body;" + "\n" +
+                       @"            >;" + "\n" +
+                       @"            out skel qt;";
             var buffer = System.Text.Encoding.UTF8.GetBytes(body);
             var byteContent = new ByteArrayContent(buffer);
             var response = await client.PostAsync("https://overpass-api.de/api/interpreter", byteContent);
-            string rawPeaks = await response.Content.ReadAsStringAsync();
-            RootPeaks myDeserializedClass = JsonSerializer.Deserialize<RootPeaks>(rawPeaks);
-            Shared.Peak[] peaks = myDeserializedClass.Elements.Select(x => 
-                new Shared.Peak(x.Id, x.Tags.Ele, x.Tags.Name, x.Tags.NameSma, x.Tags.AltName, new Shared.Point(new double[] {x.Lon, x.Lat}))).ToArray();
-
-            foreach (Shared.Peak peak in peaks){
-                await documentsOut.AddAsync(new Shared.CosmosPeak(peak.id+"", DateTimeOffset.Now, peak));
-            }
-                
-            return new OkObjectResult("Added " + peaks.Length + " peaks to the database");
+            string rawResponseString = await response.Content.ReadAsStringAsync();
+            return rawResponseString;
         }
     }
+
 }
