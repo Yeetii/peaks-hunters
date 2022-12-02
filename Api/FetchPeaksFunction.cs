@@ -65,19 +65,25 @@ namespace BlazorApp.Api
             ILogger log)
         {
             string peaksQuery = @"node[""natural""=""peak""]";
+            string regionsQuery = @"relation[""boundary""=""administrative""][""admin_level""=""4""]";
             Coordinate topCord = new Coordinate(62.50826064422815,10.733642578125);
             Coordinate botCord = new Coordinate(64.3755654235413,15.4742431640625);
-            string rawPeaks = await QueryOverpass(peaksQuery, topCord, botCord, log);
+            Task<string> queryPeaksTask = QueryOverpass(peaksQuery, topCord, botCord, log);
+            Task<string> queryRegionsTask = QueryOverpass(regionsQuery, topCord, botCord, log);
 
-            RootPeaks myDeserializedClass = JsonSerializer.Deserialize<RootPeaks>(rawPeaks);
-            Shared.Peak[] peaks = myDeserializedClass.Elements.Select(x => 
-                new Shared.Peak(x.Id, x.Tags.Ele, x.Tags.Name, x.Tags.NameSma, x.Tags.AltName, new Shared.Point(new double[] {x.Lon, x.Lat}))).ToArray();
+            // string rawPeaks = await queryPeaksTask;
+            string rawRegions = await queryRegionsTask;
+            return new OkObjectResult(rawRegions);
 
-            foreach (Shared.Peak peak in peaks){
-                await documentsOut.AddAsync(new Shared.CosmosPeak(peak.id+"", DateTimeOffset.Now, peak));
-            }
+            // RootPeaks myDeserializedClass = JsonSerializer.Deserialize<RootPeaks>(rawPeaks);
+            // Shared.Peak[] peaks = myDeserializedClass.Elements.Select(x => 
+            //     new Shared.Peak(x.Id, x.Tags.Ele, x.Tags.Name, x.Tags.NameSma, x.Tags.AltName, new Shared.Point(new double[] {x.Lon, x.Lat}))).ToArray();
+
+            // foreach (Shared.Peak peak in peaks){
+            //     await documentsOut.AddAsync(new Shared.CosmosPeak(peak.id+"", DateTimeOffset.Now, peak));
+            // }
                 
-            return new OkObjectResult("Added " + peaks.Length + " peaks to the database");
+            // return new OkObjectResult("Added " + peaks.Length + " peaks to the database");
         }
         private static async Task<string> QueryOverpass(string query, Coordinate topCorner, Coordinate botCorner, ILogger log){
             string bbox = topCorner.lat.ToString(CultureInfo.InvariantCulture) + "," + topCorner.lng.ToString(CultureInfo.InvariantCulture) + "," + 
