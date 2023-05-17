@@ -5,8 +5,9 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using IO.Swagger.Api;
-using IO.Swagger.Client;
+using Strava.Api;
+using Strava.Client;
+using Strava.Model;
 using System.Net.Http;
 using System.Collections.Generic;
 using System.Net.Http.Json;
@@ -51,9 +52,9 @@ namespace BlazorApp.Api
             List<Shared.Activity> activities = new List<Shared.Activity>();
             int page = 1;
             while (true){
-                List<IO.Swagger.Model.SummaryActivity> results = apiInstance.GetLoggedInAthleteActivities(page: page, perPage: 200);
+                List<Strava.Model.SummaryActivity> results = apiInstance.GetLoggedInAthleteActivities(page: page, perPage: 200);
                 
-                foreach (IO.Swagger.Model.SummaryActivity result in results) {
+                foreach (Strava.Model.SummaryActivity result in results) {
                     activities.Add(new Shared.Activity(result));
                 }
 

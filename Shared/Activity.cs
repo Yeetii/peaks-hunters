@@ -1,6 +1,5 @@
-using System;
 using System.Collections.Generic;
-using IO.Swagger.Model;
+using Strava.Model;
 namespace BlazorApp.Shared
 
 {
