@@ -5,17 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Linq;
 using System.Net.Http;
 
-
-
 namespace BlazorApp.Api
 {
-
     public class RootPeaks
     {
         [JsonPropertyName("elements")]
@@ -52,23 +48,23 @@ namespace BlazorApp.Api
 
     public static class FetchPeaksFunction
     {
-        static HttpClient client = new HttpClient();
+        private const string overpassUri = "https://overpass-api.de/api/interpreter";
+        static readonly HttpClient client = new();
         [FunctionName("FetchPeaks")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest _,
             [CosmosDB(databaseName: "Data", containerName: "Peaks",
             Connection = "PeaksCosmosDbConnectionString"
-            )]IAsyncCollector<dynamic> documentsOut,
-            ILogger log)
+            )]IAsyncCollector<dynamic> documentsOut)
         {
-            var body = @"[out:json][timeout:25];" + "\n" +
+            const string body = @"[out:json][timeout:25];" + "\n" +
             @"            node[""natural""=""peak""](62.50826064422815,10.733642578125,64.3755654235413,15.4742431640625);" + "\n" +
             @"            out body;" + "\n" +
             @"            >;" + "\n" +
             @"            out skel qt;";
             var buffer = System.Text.Encoding.UTF8.GetBytes(body);
             var byteContent = new ByteArrayContent(buffer);
-            var response = await client.PostAsync("https://overpass-api.de/api/interpreter", byteContent);
+            var response = await client.PostAsync(overpassUri, byteContent);
             string rawPeaks = await response.Content.ReadAsStringAsync();
             RootPeaks myDeserializedClass = JsonSerializer.Deserialize<RootPeaks>(rawPeaks);
             Shared.Peak[] peaks = myDeserializedClass.Elements.Select(x => 
@@ -77,7 +73,6 @@ namespace BlazorApp.Api
             foreach (Shared.Peak peak in peaks){
                 await documentsOut.AddAsync(new Shared.CosmosPeak(peak.id+"", DateTimeOffset.Now, peak));
             }
-                
             return new OkObjectResult("Added " + peaks.Length + " peaks to the database");
         }
     }

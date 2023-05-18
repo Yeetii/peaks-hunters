@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.Cosmos;
-
 
 namespace BlazorApp.Api
 {
@@ -20,33 +18,30 @@ namespace BlazorApp.Api
             [CosmosDB(
                 databaseName: "Data",
                 containerName: "Peaks",
-                Connection = "PeaksCosmosDbConnectionString")]CosmosClient client,
-            ILogger log)
+                Connection = "PeaksCosmosDbConnectionString")]CosmosClient client)
         {
             List<BlazorApp.Shared.CosmosPeak> cosmosPeaks;
 
             string lat = req.Query["lat"].ToString();
             string lon = req.Query["lon"].ToString();
-            int radius;
-            int defaultRadius = 40000;
-            if (!int.TryParse(req.Query["radius"], out radius)){
+            const int defaultRadius = 40000;
+            if (!int.TryParse(req.Query["radius"], out int radius)){
                 radius = defaultRadius;
-            };
-
-            if (!(string.IsNullOrEmpty(lat) || string.IsNullOrEmpty(lon))){
-                cosmosPeaks = await GeoSpatialFetch<BlazorApp.Shared.CosmosPeak>(client, lat, lon, radius);
-            } else {
-                cosmosPeaks = await FetchWholeCollection<BlazorApp.Shared.CosmosPeak>(client);
             }
 
-            BlazorApp.Shared.Peak[] peaks = cosmosPeaks.Select(x => x.peak).ToArray();
+            if (!(string.IsNullOrEmpty(lat) || string.IsNullOrEmpty(lon))){
+                cosmosPeaks = await GeoSpatialFetch<Shared.CosmosPeak>(client, lat, lon, radius);
+            } else {
+                cosmosPeaks = await FetchWholeCollection<Shared.CosmosPeak>(client);
+            }
+
+            Shared.Peak[] peaks = cosmosPeaks.Select(x => x.peak).ToArray();
             return new OkObjectResult(peaks);
-            
         }
 
         public static async Task<List<T>> GeoSpatialFetch<T>(CosmosClient client, string lat, string lon, int radius){
-            string query = String.Join(Environment.NewLine, 
-            "SELECT *", 
+            string query = string.Join(Environment.NewLine,
+            "SELECT *",
             "FROM p",
             $"WHERE ST_DISTANCE(p.peak.location, {{'type': 'Point', 'coordinates':[{lon}, {lat}]}}) < {radius}");
 
@@ -58,18 +53,16 @@ namespace BlazorApp.Api
         }
 
         public static async Task<List<T>> QueryCollection<T>(CosmosClient client, string query){
-            List<T> documents = new List<T>();
+            List<T> documents = new();
 
             Container container = client.GetDatabase("Data").GetContainer("Peaks");
-            QueryDefinition queryDefinition = new QueryDefinition(query);
+            QueryDefinition queryDefinition = new(query);
             using (FeedIterator<T> resultSet = container.GetItemQueryIterator<T>(queryDefinition))
             {
                 while (resultSet.HasMoreResults)
                 {
-                    Microsoft.Azure.Cosmos.FeedResponse<T> response = await resultSet.ReadNextAsync();
-                    foreach (T peak in response){
-                        documents.Add(peak);
-                    }
+                    FeedResponse<T> response = await resultSet.ReadNextAsync();
+                    documents.AddRange(response);
                 }
             }
             return documents;
