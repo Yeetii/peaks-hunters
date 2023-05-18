@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 
 namespace BlazorApp.Shared
 {
@@ -22,13 +21,13 @@ namespace BlazorApp.Shared
         }
 
         // TODO when refactoring make it general, remove dependency on Model.Peak 
-        public static List<Shared.Peak> FindPeaks(Shared.Peak[] peaks, string polylineString){
+        public static List<Peak> FindPeaks(Peak[] peaks, string polylineString){
         var gf = GetGeometryFactory();
         IEnumerable<NetTopologySuite.Geometries.Coordinate> polyline = DecodePolyLine(polylineString);
         NetTopologySuite.Geometries.LineString line = gf.CreateLineString(polyline.ToArray());
 
-        List<Shared.Peak> matches = new List<Shared.Peak>();
-        foreach (Shared.Peak peak in peaks){
+        List<Peak> matches = new List<Peak>();
+        foreach (Peak peak in peaks){
             NetTopologySuite.Geometries.Polygon peakBox = CalculateBoundingBox(
                 new NetTopologySuite.Geometries.Coordinate(peak.location.coordinates[0], peak.location.coordinates[1]), 50);
             if (line.Intersects(peakBox)){
@@ -48,19 +47,17 @@ namespace BlazorApp.Shared
 
             var gf = GetGeometryFactory();
 
-            var ply1 = gf.CreatePolygon(new[] {
+            return gf.CreatePolygon(new[] {
                 new NetTopologySuite.Geometries.Coordinate(longitude-dLong, latitude-dLat),
                 new NetTopologySuite.Geometries.Coordinate(longitude-dLong, latitude+dLat),
                 new NetTopologySuite.Geometries.Coordinate(longitude+dLong, latitude+dLat),
                 new NetTopologySuite.Geometries.Coordinate(longitude+dLong, latitude-dLat),
                 new NetTopologySuite.Geometries.Coordinate(longitude-dLong, latitude-dLat),
             });
-            return ply1;
         }
 
-
         public static double DistanceTo(Coordinate p1, Coordinate p2)
-        { 
+        {
             double lat1 = p1.lat;
             double lon1 = p1.lng;
             double lat2 = p2.lat;
@@ -77,14 +74,12 @@ namespace BlazorApp.Shared
             return dist*111189.57696; // Result in metres
         }
 
-
         // This function was taken from https://gist.github.com/shinyzhu/4617989 and modified a little
         public static IEnumerable<NetTopologySuite.Geometries.Coordinate> DecodePolyLine(string encodedPoints)
         {
             if (string.IsNullOrEmpty(encodedPoints))
-                throw new ArgumentNullException("encodedPoints");
+                throw new ArgumentNullException(nameof(encodedPoints));
 
-            char[] polylineChars = encodedPoints.ToCharArray();
             int index = 0;
 
             int currentLat = 0;
@@ -93,19 +88,19 @@ namespace BlazorApp.Shared
             int sum;
             int shifter;
 
-            while (index < polylineChars.Length)
+            while (index < encodedPoints.ToCharArray().Length)
             {
                 // calculate next latitude
                 sum = 0;
                 shifter = 0;
                 do
                 {
-                    next5bits = (int)polylineChars[index++] - 63;
+                    next5bits = encodedPoints[index++] - 63;
                     sum |= (next5bits & 31) << shifter;
                     shifter += 5;
-                } while (next5bits >= 32 && index < polylineChars.Length);
+                } while (next5bits >= 32 && index < encodedPoints.ToCharArray().Length);
 
-                if (index >= polylineChars.Length)
+                if (index >= encodedPoints.ToCharArray().Length)
                     break;
 
                 currentLat += (sum & 1) == 1 ? ~(sum >> 1) : (sum >> 1);
@@ -115,12 +110,12 @@ namespace BlazorApp.Shared
                 shifter = 0;
                 do
                 {
-                    next5bits = (int)polylineChars[index++] - 63;
+                    next5bits = encodedPoints[index++] - 63;
                     sum |= (next5bits & 31) << shifter;
                     shifter += 5;
-                } while (next5bits >= 32 && index < polylineChars.Length);
+                } while (next5bits >= 32 && index < encodedPoints.ToCharArray().Length);
 
-                if (index >= polylineChars.Length && next5bits >= 32)
+                if (index >= encodedPoints.ToCharArray().Length && next5bits >= 32)
                     break;
 
                 currentLng += (sum & 1) == 1 ? ~(sum >> 1) : (sum >> 1);

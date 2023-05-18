@@ -1,7 +1,6 @@
 
 namespace BlazorApp.Shared
 {
-
     // Special format needed for CosmosDB spatial queries https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-query-geospatial-intro
     public class Peak {
         public Peak(){}
