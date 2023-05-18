@@ -15,7 +15,7 @@ using System.Net.Http.Json;
 using System.Linq;
 using System.Globalization;
 using BlazorApp.Shared;
-
+using BlazorApp.Api;
 
 namespace BlazorApp.Api
 {
@@ -84,7 +84,7 @@ namespace BlazorApp.Api
             List<Shared.Activity> activities = new List<Shared.Activity>();
             foreach (Strava.Model.SummaryActivity result in swaggerActivities) {
                 try {
-                    activities.Add(new Shared.Activity(result));
+                    activities.Add(ActivityMapper.MapSummaryActivity(result));
                 } catch {
                     log.LogError("Activity id: " + result.Id + " could not be parsed!");
                 }
@@ -103,12 +103,12 @@ namespace BlazorApp.Api
 
             List<Activity> activitiesWithSummits = new List<Activity>();
             foreach (Activity activity in activities){
-                string polyline = activity.polyline ?? activity.summary_polyline;
+                string polyline = activity.Polyline ?? activity.SummaryPolyline;
                 if (String.IsNullOrEmpty(polyline)){
                     continue;
                 }
                 Activity mappedActivity = MapPeaksToActivity(activity, allSurroundingPeaks, log);
-                if (mappedActivity.peaks is not null && mappedActivity.peaks.Count > 0){
+                if (mappedActivity.Peaks is not null && mappedActivity.Peaks.Count > 0){
                     activitiesWithSummits.Add(mappedActivity);
                 } 
             }
@@ -117,18 +117,18 @@ namespace BlazorApp.Api
 
         private static Activity MapPeaksToActivity(Shared.Activity activity, Peak[] allSurroundingPeaks, ILogger log){
             try {
-                Coordinate startCoordinate = Coordinate.ParseCoordinate(activity.start_latlng);
-                if (activity.distance.HasValue && startCoordinate is not null){
-                    string polyline = activity.polyline ?? activity.summary_polyline;
+                Coordinate startCoordinate = Coordinate.ParseCoordinate(activity.StartLatLng);
+                if (activity.Distance.HasValue && startCoordinate is not null){
+                    string polyline = activity.Polyline ?? activity.SummaryPolyline;
                     List<Shared.Peak> peaks = GeoSpatialFunctions.FindPeaks(allSurroundingPeaks, polyline);
                     List<Shared.PeakInfo> peakInfos = peaks.Select(p => new Shared.PeakInfo(p.id + "", p.name)).ToList();
                     
-                    activity.peaks = peakInfos;
+                    activity.Peaks = peakInfos;
                 } else {
-                    log.LogError("Activity id: " + activity.id + " did not have start_latlng or a distance.");
+                    log.LogError("Activity id: " + activity.Id + " did not have start_latlng or a distance.");
                 }
                 } catch (Exception e){
-                    log.LogError("Activity id: " + activity.id + " could not be mapped to peaks!");
+                    log.LogError("Activity id: " + activity.Id + " could not be mapped to peaks!");
                     log.LogError(e.ToString());
                 }
             return activity;
@@ -142,12 +142,12 @@ namespace BlazorApp.Api
             float maxActivityDistance = 0;
             foreach (Activity activity in activities){
                 if (coordinate is null){
-                    coordinate = Coordinate.ParseCoordinate(activity.start_latlng);
+                    coordinate = Coordinate.ParseCoordinate(activity.StartLatLng);
                 }
-                if ((activity.distance ?? 0) > maxActivityDistance){
-                    maxActivityDistance = activity.distance.Value;
+                if ((activity.Distance ?? 0) > maxActivityDistance){
+                    maxActivityDistance = activity.Distance.Value;
                 }
-                Coordinate activityStartPos = Coordinate.ParseCoordinate(activity.start_latlng);
+                Coordinate activityStartPos = Coordinate.ParseCoordinate(activity.StartLatLng);
                 if (activityStartPos is not null && coordinate is not null){
                     float distance = (float) GeoSpatialFunctions.DistanceTo(coordinate, activityStartPos);
                     if (distance > maxDistance){
@@ -162,12 +162,12 @@ namespace BlazorApp.Api
             Dictionary<string, List<Shared.Activity>> summitedPeaks = new Dictionary<string, List<Shared.Activity>>();
 
             foreach (Shared.Activity activity in activities){
-                List<Shared.PeakInfo> peaks = activity.peaks;
+                List<Shared.PeakInfo> peaks = activity.Peaks;
                 foreach (Shared.PeakInfo peak in peaks){
-                    if (!summitedPeaks.ContainsKey(peak.id)){
-                        summitedPeaks.Add(peak.id, new List<Shared.Activity>());
+                    if (!summitedPeaks.ContainsKey(peak.Id)){
+                        summitedPeaks.Add(peak.Id, new List<Shared.Activity>());
                     }
-                    summitedPeaks[peak.id].Add(activity);
+                    summitedPeaks[peak.Id].Add(activity);
                 }
             }
             return summitedPeaks;

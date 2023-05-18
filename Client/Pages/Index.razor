@@ -113,7 +113,7 @@
             string peakId = peak.id + "";
             if (summitedPeaks.ContainsKey(peakId)){
                 List<Activity> activities = summitedPeaks[peakId];
-                string activityIds = string.Join(", ", activities.Select(x => "<a href=https://www.strava.com/activities/" + x.id + ">" + x.id + "</a>"));
+                string activityIds = string.Join(", ", activities.Select(x => "<a href=https://www.strava.com/activities/" + x.Id + ">" + x.Id + "</a>"));
                 string popupMessage = $@"Climbed {activities.Count} time{((activities.Count > 1) ? 's' : ' ')} <br>
                                         Activity ids: {activityIds}";
 
