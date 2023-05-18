@@ -22,9 +22,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Strava">
-      <HintPath>libs/IO.Swagger.dll</HintPath>
-    </Reference>
-  </ItemGroup>
 </Project>
