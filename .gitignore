@@ -345,3 +345,4 @@ healthchecksdb
 /playwright/.cache/
 
 .vscode/
+.DS_Store
