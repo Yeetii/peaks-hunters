@@ -6,6 +6,7 @@
 		AttributionControl,
 		GeolocateControl,
 		Map,
+		Marker,
 		NavigationControl,
 		ScaleControl
 	} from 'maplibre-gl';
@@ -36,6 +37,8 @@
 		map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
 
 		mapStore?.set(map);
+
+		const marker = new Marker().setLngLat([12.550343, 55.665957]).addTo(map);
 	});
 </script>
 

@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/watergis/sveltekit-maplibre-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/watergis/sveltekit-maplibre-boilerplate/actions/workflows/ci.yml)
 
-
 ## Usage
 
 ### Environmental variables
