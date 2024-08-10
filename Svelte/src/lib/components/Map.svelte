@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { PUBLIC_MAPTILER_KEY } from '$env/static/public';
+	import peakIcon from '$lib/assets/peak.png';
 	import type { MapStore } from '$lib/stores';
 	import { MAPSTORE_CONTEXT_KEY } from '$lib/stores';
-	import peakIcon from '$lib/assets/peak.png';
 	import maplibregl, {
 		AttributionControl,
 		GeolocateControl,
@@ -17,7 +17,61 @@
 
 	let mapContainer: HTMLDivElement;
 
-	let radius = 20000
+	let fetchRadius = 20000;
+	let cancelFetchZone = 0.5;
+
+	let queriedLocations = new Array<LngLat>();
+	let peaks: GeoJSON.FeatureCollection;
+	let peakIds = new Set();
+
+	const R = 6371e3; // Earth's radius in meters
+
+	function toRadians(degrees: number): number {
+		return degrees * (Math.PI / 180);
+	}
+
+	function calculateDistance(p1: LngLat, p2: LngLat): number {
+		const φ1 = toRadians(p1.lat);
+		const φ2 = toRadians(p2.lat);
+		const Δφ = toRadians(p2.lat - p1.lat);
+		const Δλ = toRadians(p2.lng - p1.lng);
+
+		const a =
+			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return R * c; // Distance in meters
+	}
+
+	const fetchPeaks = async (center: LngLat): Promise<GeoJSON.GeoJSON> => {
+		var alreadyFetched = queriedLocations.some((lngLat) => {
+			var distance = calculateDistance(lngLat, center);
+			return distance < fetchRadius * cancelFetchZone;
+		});
+
+		if (alreadyFetched) return peaks;
+
+		queriedLocations.push(center);
+
+		return fetch(
+			`http://localhost:7071/api/peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`
+		)
+			.then((r) => r.json())
+			.then((newPeaks: GeoJSON.FeatureCollection) => {
+				if (peaks == undefined) {
+					peaks = newPeaks;
+				} else {
+					let filteredPeaks = newPeaks.features.filter(
+						(feature) => !peakIds.has(feature.properties?.id)
+					);
+					filteredPeaks.forEach((peak) => peakIds.add(peak.properties?.id));
+					peaks.features = peaks.features.concat(filteredPeaks);
+				}
+				console.log(peaks.features);
+				return peaks;
+			});
+	};
 
 	onMount(() => {
 		const map = new Map({
@@ -42,73 +96,61 @@
 		mapStore?.set(map);
 
 		map.on('load', () => {
-			var lngLat = map.getCenter()
-			map.loadImage(peakIcon)
-				.then(image => map.addImage('peakIcon', image.data))
+			map.loadImage(peakIcon).then((image) => map.addImage('peakIcon', image.data));
 
-            fetch(`http://localhost:7071/api/peaks?lat=${lngLat.lat}&lon=${lngLat.lng}&radius=${radius}`)
-                .then(r => r.json())
-                .then(body => {
+			fetchPeaks(map.getCenter()).then((peaks) => {
+				map.addSource('places', {
+					type: 'geojson',
+					data: peaks
+				});
 
-					map.addSource('places', {
-					'type': 'geojson',
-					'data': body});
-					
-					map.addLayer({
-					'id': 'places',
-					'type': 'symbol',
-					'source': 'places',
-					'layout': {
+				map.addLayer({
+					id: 'places',
+					type: 'symbol',
+					source: 'places',
+					layout: {
 						'icon-image': 'peakIcon',
 						'text-field': ['get', 'name'],
-						'text-font': [
-							'Open Sans Semibold',
-							'Arial Unicode MS Bold'
-						],
+						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
 						'text-offset': [0, 1.25],
 						'text-anchor': 'top'
-						}
-					});
-                })
-
-				map.on('click', 'places', (e) => {
-					const description = e.features?.at(0)?.properties['elevation']
-
-					const coordinates = e.lngLat
-
-					// Ensure that if the map is zoomed out such that multiple
-					// copies of the feature are visible, the popup appears
-					// over the copy being pointed to.
-					while (Math.abs(e.lngLat.lng - coordinates.lng) > 180) {
-						coordinates.lng += e.lngLat.lng > coordinates.lng ? 360 : -360;
 					}
-
-					new maplibregl.Popup()
-							.setLngLat(new LngLat(coordinates.lng, coordinates.lat))
-							.setHTML(description)
-							.addTo(map);
 				});
+			});
 
-				map.on('mouseenter', 'places', () => {
-					map.getCanvas().style.cursor = 'pointer';
+			map.on('click', 'places', (e) => {
+				const description = e.features?.at(0)?.properties['elevation'];
+
+				const coordinates = e.lngLat;
+
+				// Ensure that if the map is zoomed out such that multiple
+				// copies of the feature are visible, the popup appears
+				// over the copy being pointed to.
+				while (Math.abs(e.lngLat.lng - coordinates.lng) > 180) {
+					coordinates.lng += e.lngLat.lng > coordinates.lng ? 360 : -360;
+				}
+
+				new maplibregl.Popup()
+					.setLngLat(new LngLat(coordinates.lng, coordinates.lat))
+					.setHTML(description)
+					.addTo(map);
+			});
+
+			map.on('mouseenter', 'places', () => {
+				map.getCanvas().style.cursor = 'pointer';
+			});
+
+			map.on('mouseleave', 'places', () => {
+				map.getCanvas().style.cursor = '';
+			});
+
+			map.on('moveend', () => {
+				fetchPeaks(map.getCenter()).then((peaks) => {
+					const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
+					placesSource.setData(peaks);
 				});
-
-				map.on('mouseleave', 'places', () => {
-					map.getCanvas().style.cursor = '';
-				});
-
-				map.on('moveend', () => {
-					var center = map.getCenter()
-					// radius = map.getZoom()
-					fetch(`http://localhost:7071/api/peaks?lat=${center.lat}&lon=${center.lng}&radius=${radius}`)
-						.then(r => r.json())
-						.then(body => {
-							const placesSource = map.getSource('places') as maplibregl.GeoJSONSource
-							placesSource.setData(body)
-						})
-				})
-			}
-		);
+			});
+		});
 	});
 </script>
 
