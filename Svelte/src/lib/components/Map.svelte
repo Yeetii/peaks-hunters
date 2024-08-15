@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { PUBLIC_MAPTILER_KEY } from '$env/static/public';
 	import peakIcon from '$lib/assets/peak.png';
+	import summitedPeakIcon from '$lib/assets/peak-summited.png';
 	import type { MapStore } from '$lib/stores';
 	import { MAPSTORE_CONTEXT_KEY } from '$lib/stores';
 	import maplibregl, {
@@ -12,6 +13,8 @@
 		ScaleControl
 	} from 'maplibre-gl';
 	import { getContext, onMount } from 'svelte';
+
+	const apiUrl = 'https://strava-tools-api.azurewebsites.net/api/';
 
 	let mapStore: MapStore = getContext(MAPSTORE_CONTEXT_KEY);
 
@@ -25,6 +28,13 @@
 	let peakIds = new Set();
 
 	const R = 6371e3; // Earth's radius in meters
+
+	interface SummitedPeak {
+		id: string;
+		userId: string;
+		peakId: string;
+		activityIds: string[];
+	}
 
 	function toRadians(degrees: number): number {
 		return degrees * (Math.PI / 180);
@@ -54,21 +64,30 @@
 
 		queriedLocations.push(center);
 
-		return fetch(
-			`http://localhost:7071/api/peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`
-		)
+		return fetch(`${apiUrl}peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`)
 			.then((r) => r.json())
 			.then((newPeaks: GeoJSON.FeatureCollection) => {
 				if (peaks == undefined) {
 					peaks = newPeaks;
 				} else {
-					let filteredPeaks = newPeaks.features.filter(
-						(feature) => !peakIds.has(feature.properties?.id)
-					);
-					filteredPeaks.forEach((peak) => peakIds.add(peak.properties?.id));
+					let filteredPeaks = newPeaks.features.filter((feature) => !peakIds.has(feature.id));
+					filteredPeaks.forEach((peak) => peakIds.add(peak.id));
 					peaks.features = peaks.features.concat(filteredPeaks);
 				}
 				console.log(peaks.features);
+				return peaks;
+			});
+	};
+
+	const fetchSummits = async (userId: string): Promise<GeoJSON.GeoJSON> => {
+		return fetch(`${apiUrl}${userId}/summitedPeaks`)
+			.then((r) => r.json())
+			.then((summitedPeaks: SummitedPeak[]) => {
+				for (var summitedPeak of summitedPeaks) {
+					var peakId = summitedPeak.peakId;
+					var properties = peaks.features.find((x) => x.id == peakId)?.properties;
+					if (properties) properties['summited'] = true;
+				}
 				return peaks;
 			});
 	};
@@ -97,6 +116,7 @@
 
 		map.on('load', () => {
 			map.loadImage(peakIcon).then((image) => map.addImage('peakIcon', image.data));
+			map.loadImage(summitedPeakIcon).then((image) => map.addImage('summitedPeakIcon', image.data));
 
 			fetchPeaks(map.getCenter()).then((peaks) => {
 				map.addSource('places', {
@@ -109,7 +129,7 @@
 					type: 'symbol',
 					source: 'places',
 					layout: {
-						'icon-image': 'peakIcon',
+						'icon-image': ['case', ['has', 'summited'], 'summitedPeakIcon', 'peakIcon'],
 						'text-field': ['get', 'name'],
 						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
 						'text-offset': [0, 1.25],
@@ -118,8 +138,16 @@
 				});
 			});
 
+			fetchSummits('11908635').then((peaks) => {
+				const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
+				placesSource.setData(peaks);
+			});
+
 			map.on('click', 'places', (e) => {
-				const description = e.features?.at(0)?.properties['elevation'];
+				const description =
+					e.features?.at(0)?.properties['elevation'] +
+					' groups: ' +
+					e.features?.at(0)?.properties['groups'];
 
 				const coordinates = e.lngLat;
 

@@ -1,9 +1,9 @@
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
-	const title = 'Sveltekit Maplibre boilerplate';
-	const site_name = '@watergis/sveltekit-maplibre-boilerplate';
-	const site_description = 'This is sveltekit boilerplate for building Maplibre GL JS website.';
+	const title = 'Peakshunters';
+	const site_name = 'Peakshunters';
+	const site_description = 'Visualizes peaks summited in Strava activities';
 
 	return {
 		title,
