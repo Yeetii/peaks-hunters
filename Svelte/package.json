@@ -45,6 +45,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@types/geojson": "^7946.0.14",
 		"dotenv": "^16.4.5",
 		"maplibre-gl": "^4.5.1"
 	},

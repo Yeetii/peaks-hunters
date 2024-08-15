@@ -13,6 +13,7 @@
 		ScaleControl
 	} from 'maplibre-gl';
 	import { getContext, onMount } from 'svelte';
+	import type { FeatureCollection, GeoJSON } from 'geojson';
 
 	const apiUrl = 'https://strava-tools-api.azurewebsites.net/api/';
 
@@ -54,7 +55,7 @@
 		return R * c; // Distance in meters
 	}
 
-	const fetchPeaks = async (center: LngLat): Promise<GeoJSON.GeoJSON> => {
+	const fetchPeaks = async (center: LngLat): Promise<GeoJSON> => {
 		var alreadyFetched = queriedLocations.some((lngLat) => {
 			var distance = calculateDistance(lngLat, center);
 			return distance < fetchRadius * cancelFetchZone;
@@ -66,7 +67,7 @@
 
 		return fetch(`${apiUrl}peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`)
 			.then((r) => r.json())
-			.then((newPeaks: GeoJSON.FeatureCollection) => {
+			.then((newPeaks: FeatureCollection) => {
 				if (peaks == undefined) {
 					peaks = newPeaks;
 				} else {
@@ -79,7 +80,7 @@
 			});
 	};
 
-	const fetchSummits = async (userId: string): Promise<GeoJSON.GeoJSON> => {
+	const fetchSummits = async (userId: string): Promise<GeoJSON> => {
 		return fetch(`${apiUrl}${userId}/summitedPeaks`)
 			.then((r) => r.json())
 			.then((summitedPeaks: SummitedPeak[]) => {
