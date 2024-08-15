@@ -131,10 +131,17 @@
 					source: 'places',
 					layout: {
 						'icon-image': ['case', ['has', 'summited'], 'summitedPeakIcon', 'peakIcon'],
-						'text-field': ['get', 'name'],
+						'text-field': [
+							'concat',
+							['get', 'name'],
+							'\n',
+							['to-string', ['get', 'elevation']],
+							' m'
+						],
 						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
 						'text-offset': [0, 1.25],
-						'text-anchor': 'top'
+						'text-anchor': 'top',
+						'icon-size': 0.75
 					}
 				});
 			});
