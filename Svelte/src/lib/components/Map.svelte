@@ -14,8 +14,9 @@
 	} from 'maplibre-gl';
 	import { getContext, onMount } from 'svelte';
 	import type { FeatureCollection, GeoJSON } from 'geojson';
+	import { dev } from '$app/environment';
 
-	const apiUrl = 'https://strava-tools-api.azurewebsites.net/api/';
+	const apiUrl = dev ? "http://localhost:7071/api/" : "https://strava-tools-api.azurewebsites.net/api/";
 
 	let mapStore: MapStore = getContext(MAPSTORE_CONTEXT_KEY);
 
@@ -80,8 +81,8 @@
 			});
 	};
 
-	const fetchSummits = async (userId: string): Promise<GeoJSON> => {
-		return fetch(`${apiUrl}${userId}/summitedPeaks`)
+	const fetchSummits = async (): Promise<GeoJSON> => {
+		return fetch(`${apiUrl}summitedPeaks`, {credentials: 'include'})
 			.then((r) => r.json())
 			.then((summitedPeaks: SummitedPeak[]) => {
 				for (var summitedPeak of summitedPeaks) {
@@ -146,7 +147,7 @@
 				});
 			});
 
-			fetchSummits('11908635').then((peaks) => {
+			fetchSummits().then((peaks) => {
 				const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
 				placesSource.setData(peaks);
 			});
