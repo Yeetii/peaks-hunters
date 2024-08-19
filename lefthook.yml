@@ -1,7 +1,7 @@
 # EXAMPLE USAGE:
 #
-  # Refer for explanation to following link:
-  # https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+# Refer for explanation to following link:
+# https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
 
 pre-push:
   commands:
@@ -16,5 +16,6 @@ pre-commit:
   parallel: true
   commands:
     eslint:
-      glob: "*.{js,ts,jsx,tsx}"
-      run: pnpm eslint {staged_files}
+      glob: "Svelte/**/*.{js,ts,jsx,tsx}"
+      run: |
+        cd Svelte && pnpm eslint {staged_files}

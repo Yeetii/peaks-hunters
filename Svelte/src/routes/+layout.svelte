@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
+	import '../app.css';
 
 	let title = $page.data.title;
 	let site_name = $page.data.site_name;
