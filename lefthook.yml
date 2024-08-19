@@ -18,4 +18,6 @@ pre-commit:
     eslint:
       glob: "Svelte/**/*.{js,ts,jsx,tsx}"
       run: |
-        cd Svelte && pnpm eslint {staged_files}
+        cd Svelte && pnpm lint
+        cd Svelte && pnpm format
+        cd Svelte && pnpm check

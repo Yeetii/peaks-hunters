@@ -16,7 +16,9 @@
 	import type { FeatureCollection, GeoJSON } from 'geojson';
 	import { dev } from '$app/environment';
 
-	const apiUrl = dev ? "http://localhost:7071/api/" : "https://strava-tools-api.azurewebsites.net/api/";
+	const apiUrl = dev
+		? 'http://localhost:7071/api/'
+		: 'https://strava-tools-api.azurewebsites.net/api/';
 
 	let mapStore: MapStore = getContext(MAPSTORE_CONTEXT_KEY);
 
@@ -82,7 +84,7 @@
 	};
 
 	const fetchSummits = async (): Promise<GeoJSON> => {
-		return fetch(`${apiUrl}summitedPeaks`, {credentials: 'include'})
+		return fetch(`${apiUrl}summitedPeaks`, { credentials: 'include' })
 			.then((r) => r.json())
 			.then((summitedPeaks: SummitedPeak[]) => {
 				for (var summitedPeak of summitedPeaks) {

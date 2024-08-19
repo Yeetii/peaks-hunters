@@ -24,7 +24,7 @@
 				if (!r.ok) {
 					fetchFailed = true;
 				} else {
-					goto("/")
+					goto('/');
 				}
 			});
 		}
