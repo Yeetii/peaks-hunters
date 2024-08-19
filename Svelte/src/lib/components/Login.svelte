@@ -1,28 +1,54 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import stravaButton from '$lib/assets/btn_strava_connectwith_orange.png';
+	import { activeSession } from '$lib/stores';
 	import { createDialog, melt } from '@melt-ui/svelte';
-
-	export let trigger: boolean = false;
+	import { onMount } from 'svelte';
 
 	const {
-		elements: { trigger: dialogTrigger, overlay, content, title, description, close, portalled },
+		elements: { overlay, content, title, description, close, portalled },
 		states: { open }
 	} = createDialog({
 		role: 'alertdialog',
 		forceVisible: true
 	});
 
-	// Watch the trigger prop and update the dialog's open state
-	$: open.set(trigger);
+	const callBackUri = dev ? 'http://localhost:5173/' : 'https://peakshunters.erikmagnusson.com/';
+	const apiUrl = dev
+		? 'http://localhost:7071/api/'
+		: 'https://strava-tools-api.azurewebsites.net/api/';
+
+	activeSession.subscribe((value) => {
+		$open = !value;
+	});
+
+	onMount(() => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const hasCode = urlParams.has('code');
+
+		if (hasCode) {
+			$open = false;
+			var code = urlParams.get('code');
+			fetch(`${apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then((r) => {
+				goto('/');
+				if (r.ok) {
+					$activeSession = true;
+				} else {
+					$activeSession = false;
+				}
+			});
+		}
+	});
 </script>
 
-<button
-	use:melt={$dialogTrigger}
+<!-- <button
+	use:melt={$trigger}
 	class="rounded-md bg-white px-4 py-2
     font-medium leading-none text-magnum-700 shadow-lg hover:opacity-75 absolute z-10"
 >
 	Login
-</button>
+</button> -->
 
 {#if $open}
 	<div class="" use:melt={$portalled}>
@@ -40,9 +66,11 @@
 			</p>
 
 			<div class="mt-6 flex justify-center">
-				<button use:melt={$close} class="inline-flex">
-					<img src={stravaButton} alt="Connect with strava" />
-				</button>
+				<a
+					href="https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri={callBackUri}&scope=activity:read"
+				>
+					<img src={stravaButton} alt="Connect with strava" class="inline-flex" />
+				</a>
 			</div>
 
 			<button

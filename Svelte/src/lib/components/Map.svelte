@@ -15,6 +15,7 @@
 	import { getContext, onMount } from 'svelte';
 	import type { FeatureCollection, GeoJSON } from 'geojson';
 	import { dev } from '$app/environment';
+	import { activeSession } from '$lib/stores';
 
 	const apiUrl = dev
 		? 'http://localhost:7071/api/'
@@ -149,10 +150,10 @@
 				});
 			});
 
-			fetchSummits().then((peaks) => {
-				const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
-				placesSource.setData(peaks);
-			});
+			// fetchSummits().then((peaks) => {
+			// 	const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
+			// 	placesSource.setData(peaks);
+			// });
 
 			map.on('click', 'places', (e) => {
 				const description =
@@ -188,6 +189,15 @@
 					const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
 					placesSource.setData(peaks);
 				});
+			});
+
+			activeSession.subscribe((signedIn) => {
+				if (signedIn) {
+					fetchSummits().then((peaks) => {
+						const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
+						placesSource.setData(peaks);
+					});
+				}
 			});
 		});
 	});

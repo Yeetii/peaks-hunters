@@ -19,5 +19,5 @@ pre-commit:
       glob: "Svelte/**/*.{js,ts,jsx,tsx}"
       run: |
         cd Svelte && pnpm lint
-        cd Svelte && pnpm format
-        cd Svelte && pnpm check
+        pnpm format
+        pnpm check

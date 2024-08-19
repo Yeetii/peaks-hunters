@@ -7,10 +7,8 @@
 
 	const mapStore = createMapStore();
 	setContext(MAPSTORE_CONTEXT_KEY, mapStore);
-
-	let trigger = false;
 </script>
 
 <Map />
-<Login {trigger} />
+<Login />
 <img src={stravaImage} alt="Powered by Strava" class="absolute bottom-0 left-0 z-10 h-10" />
