@@ -23,7 +23,13 @@
 		$open = !value;
 	});
 
-	onMount(() => {
+	function getCookie(name: string) {
+		const value = `; ${document.cookie}`;
+		const parts = value.split(`; ${name}=`);
+		if (parts.length === 2) return parts?.pop()?.split(';').shift();
+	}
+
+	function readCode() {
 		const urlParams = new URLSearchParams(window.location.search);
 		const hasCode = urlParams.has('code');
 
@@ -39,6 +45,13 @@
 				}
 			});
 		}
+	}
+
+	onMount(() => {
+		if (!getCookie('session')) {
+			activeSession.set(false);
+		}
+		readCode();
 	});
 </script>
 

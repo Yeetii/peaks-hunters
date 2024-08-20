@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import { PUBLIC_MAPTILER_KEY } from '$env/static/public';
-	import peakIcon from '$lib/assets/peak.png';
 	import summitedPeakIcon from '$lib/assets/peak-summited.png';
+	import peakIcon from '$lib/assets/peak.png';
 	import type { MapStore } from '$lib/stores';
-	import { MAPSTORE_CONTEXT_KEY } from '$lib/stores';
+	import { activeSession, MAPSTORE_CONTEXT_KEY } from '$lib/stores';
+	import type { FeatureCollection, GeoJSON } from 'geojson';
 	import maplibregl, {
 		AttributionControl,
 		GeolocateControl,
@@ -13,9 +15,6 @@
 		ScaleControl
 	} from 'maplibre-gl';
 	import { getContext, onMount } from 'svelte';
-	import type { FeatureCollection, GeoJSON } from 'geojson';
-	import { dev } from '$app/environment';
-	import { activeSession } from '$lib/stores';
 
 	const apiUrl = dev
 		? 'http://localhost:7071/api/'
@@ -79,14 +78,21 @@
 					filteredPeaks.forEach((peak) => peakIds.add(peak.id));
 					peaks.features = peaks.features.concat(filteredPeaks);
 				}
-				console.log(peaks.features);
 				return peaks;
 			});
 	};
 
 	const fetchSummits = async (): Promise<GeoJSON> => {
 		return fetch(`${apiUrl}summitedPeaks`, { credentials: 'include' })
-			.then((r) => r.json())
+			.then((r) => {
+				if (r.ok) {
+					return r.json();
+				}
+				if (r.status === 401) {
+					$activeSession = false;
+				}
+				return [];
+			})
 			.then((summitedPeaks: SummitedPeak[]) => {
 				for (var summitedPeak of summitedPeaks) {
 					var peakId = summitedPeak.peakId;
