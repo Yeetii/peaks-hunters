@@ -15,9 +15,7 @@
 	});
 
 	const callBackUri = dev ? 'http://localhost:5173/' : 'https://peakshunters.erikmagnusson.com/';
-	const apiUrl = dev
-		? 'http://localhost:7071/api/'
-		: 'https://strava-tools-api.azurewebsites.net/api/';
+	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 
 	activeSession.subscribe((value) => {
 		$open = !value;

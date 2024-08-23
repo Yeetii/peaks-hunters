@@ -16,9 +16,7 @@
 	} from 'maplibre-gl';
 	import { getContext, onMount } from 'svelte';
 
-	const apiUrl = dev
-		? 'http://localhost:7071/api/'
-		: 'https://strava-tools-api.azurewebsites.net/api/';
+	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 
 	let mapStore: MapStore = getContext(MAPSTORE_CONTEXT_KEY);
 

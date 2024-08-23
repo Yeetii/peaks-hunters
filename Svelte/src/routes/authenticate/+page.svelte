@@ -6,9 +6,7 @@
 	const callBackUri = dev
 		? 'http://localhost:5173/authenticate'
 		: 'https://peakshunters.erikmagnusson.com/authenticate';
-	const apiUrl = dev
-		? 'http://localhost:7071/api/'
-		: 'https://strava-tools-api.azurewebsites.net/api/';
+	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 	var fetchFailed = false;
 	var waiting = false;
 
