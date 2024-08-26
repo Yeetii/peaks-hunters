@@ -182,4 +182,4 @@
 	});
 </script>
 
-<div class="w-full h-full" data-testid="map" bind:this={mapContainer} />
+<div class="map w-full h-full" data-testid="map" bind:this={mapContainer} />
