@@ -5,7 +5,7 @@
 	import peakIcon from '$lib/assets/peak.png';
 	import type { MapStore } from '$lib/stores';
 	import { activeSession, MAPSTORE_CONTEXT_KEY } from '$lib/stores';
-	import type { FeatureCollection, GeoJSON } from 'geojson';
+	import type { Feature, FeatureCollection, GeoJSON, GeoJsonProperties, Geometry } from 'geojson';
 	import maplibregl, {
 		AttributionControl,
 		GeolocateControl,
@@ -23,11 +23,18 @@
 
 	let mapContainer: HTMLDivElement;
 
-	let fetchRadius = 20000;
+	let fetchRadius = 50000;
 	let cancelFetchZone = 0.5;
 
 	let queriedLocations = new Array<LngLat>();
-	let peaks: GeoJSON.FeatureCollection;
+	let peaks: GeoJSON.FeatureCollection = {
+		type: 'FeatureCollection',
+		features: new Array<Feature<Geometry, GeoJsonProperties>>()
+	};
+	let summitedPeaks: GeoJSON.FeatureCollection = {
+		type: 'FeatureCollection',
+		features: new Array<Feature<Geometry, GeoJsonProperties>>()
+	};
 	let peakIds = new Set();
 
 	const R = 6371e3; // Earth's radius in meters
@@ -50,13 +57,13 @@
 		return R * c; // Distance in meters
 	}
 
-	const fetchPeaks = async (center: LngLat): Promise<GeoJSON> => {
+	const fetchPeaks = async (center: LngLat): Promise<[peaks: GeoJSON, summitedPeaks: GeoJSON]> => {
 		var alreadyFetched = queriedLocations.some((lngLat) => {
 			var distance = calculateDistance(lngLat, center);
 			return distance < fetchRadius * cancelFetchZone;
 		});
 
-		if (alreadyFetched) return peaks;
+		if (alreadyFetched) return [peaks, summitedPeaks];
 
 		queriedLocations.push(center);
 
@@ -68,19 +75,20 @@
 					return r.json();
 				}
 				if (r.status === 401) {
-					console.log('401 statussss');
 					$activeSession = false;
 				}
 			})
 			.then((newPeaks: FeatureCollection) => {
-				if (peaks == undefined) {
-					peaks = newPeaks;
-				} else {
-					let filteredPeaks = newPeaks.features.filter((feature) => !peakIds.has(feature.id));
-					filteredPeaks.forEach((peak) => peakIds.add(peak.id));
-					peaks.features = peaks.features.concat(filteredPeaks);
-				}
-				return peaks;
+				let filteredPeaks = newPeaks.features.filter((feature) => !peakIds.has(feature.id));
+				filteredPeaks.forEach((peak) => peakIds.add(peak.id));
+				filteredPeaks.forEach((peak) => {
+					if (peak.properties && peak.properties['summited']) {
+						summitedPeaks.features.push(peak);
+					} else {
+						peaks.features.push(peak);
+					}
+				});
+				return [peaks, summitedPeaks];
 			});
 	};
 
@@ -91,7 +99,8 @@
 			center: [13.0509, 63.41698],
 			zoom: 12,
 			hash: true,
-			attributionControl: false
+			attributionControl: false,
+			maxZoom: 14
 		});
 		map.addControl(new NavigationControl({}), 'top-right');
 		map.addControl(
@@ -110,27 +119,79 @@
 			map.loadImage(peakIcon).then((image) => map.addImage('peakIcon', image.data));
 			map.loadImage(summitedPeakIcon).then((image) => map.addImage('summitedPeakIcon', image.data));
 
-			fetchPeaks(map.getCenter()).then((peaks) => {
-				map.addSource('places', {
+			fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
+				map.addSource('peaks', {
 					type: 'geojson',
-					data: peaks
+					data: peaks,
+					cluster: true,
+					clusterMaxZoom: 10,
+					clusterRadius: 100
+				});
+
+				map.addSource('summitedPeaks', {
+					type: 'geojson',
+					data: summitedPeaks,
+					cluster: true,
+					clusterMaxZoom: 7,
+					clusterRadius: 100
 				});
 
 				map.addLayer({
-					id: 'places',
+					id: 'peaks',
 					type: 'symbol',
-					source: 'places',
+					source: 'peaks',
+					minzoom: 5,
 					layout: {
-						'icon-image': ['case', ['has', 'summited'], 'summitedPeakIcon', 'peakIcon'],
+						'icon-image': 'peakIcon',
 						'text-field': [
 							'concat',
-							['get', 'name'],
-							'\n',
 							[
 								'case',
-								['has', 'elevation'],
-								['concat', ['to-string', ['get', 'elevation']], ' m'],
-								''
+								['has', 'cluster'],
+								['concat', ['get', 'point_count'], ' peaks'],
+								[
+									'concat',
+									['get', 'name'],
+									'\n',
+									[
+										'case',
+										['has', 'elevation'],
+										['concat', ['to-string', ['get', 'elevation']], ' m'],
+										''
+									]
+								]
+							]
+						],
+						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+						'text-offset': [0, 1.25],
+						'text-anchor': 'top',
+						'icon-size': 0.75
+					}
+				});
+
+				map.addLayer({
+					id: 'summitedPeaks',
+					type: 'symbol',
+					source: 'summitedPeaks',
+					layout: {
+						'icon-image': 'summitedPeakIcon',
+						'text-field': [
+							'concat',
+							[
+								'case',
+								['has', 'cluster'],
+								['concat', ['get', 'point_count'], ' peaks'],
+								[
+									'concat',
+									['get', 'name'],
+									'\n',
+									[
+										'case',
+										['has', 'elevation'],
+										['concat', ['to-string', ['get', 'elevation']], ' m'],
+										''
+									]
+								]
 							]
 						],
 						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
@@ -141,7 +202,7 @@
 				});
 			});
 
-			map.on('click', 'places', (e) => {
+			map.on('click', 'peaks', (e) => {
 				let groups: Record<string, boolean> = JSON.parse(e.features?.at(0)?.properties['groups']);
 				let groupNames = Object.keys(groups);
 				const description =
@@ -164,18 +225,52 @@
 					.addTo(map);
 			});
 
-			map.on('mouseenter', 'places', () => {
+			map.on('click', 'summitedPeaks', (e) => {
+				let groups: Record<string, boolean> = JSON.parse(e.features?.at(0)?.properties['groups']);
+				let groupNames = Object.keys(groups);
+				const description =
+					groupNames.length > 0
+						? '<b>Groups:</b> ' + groupNames.join(', ')
+						: "Peak doesn't belong to any groups";
+
+				const coordinates = e.lngLat;
+
+				// Ensure that if the map is zoomed out such that multiple
+				// copies of the feature are visible, the popup appears
+				// over the copy being pointed to.
+				while (Math.abs(e.lngLat.lng - coordinates.lng) > 180) {
+					coordinates.lng += e.lngLat.lng > coordinates.lng ? 360 : -360;
+				}
+
+				new maplibregl.Popup()
+					.setLngLat(new LngLat(coordinates.lng, coordinates.lat))
+					.setHTML(description)
+					.addTo(map);
+			});
+
+			map.on('mouseenter', 'peaks', () => {
 				map.getCanvas().style.cursor = 'pointer';
 			});
 
-			map.on('mouseleave', 'places', () => {
+			map.on('mouseenter', 'summitedPeaks', () => {
+				map.getCanvas().style.cursor = 'pointer';
+			});
+
+			map.on('mouseleave', 'peaks', () => {
+				map.getCanvas().style.cursor = '';
+			});
+
+			map.on('mouseleave', 'summitedPeaks', () => {
 				map.getCanvas().style.cursor = '';
 			});
 
 			map.on('moveend', () => {
-				fetchPeaks(map.getCenter()).then((peaks) => {
-					const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
-					placesSource.setData(peaks);
+				console.log(map.getZoom());
+				fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
+					const peaksSource = map.getSource('peaks') as maplibregl.GeoJSONSource;
+					const summitedPeaksSource = map.getSource('summitedPeaks') as maplibregl.GeoJSONSource;
+					peaksSource.setData(peaks);
+					summitedPeaksSource.setData(summitedPeaks);
 				});
 			});
 		});
