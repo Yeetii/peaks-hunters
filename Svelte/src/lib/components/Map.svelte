@@ -14,6 +14,7 @@
 		NavigationControl,
 		ScaleControl
 	} from 'maplibre-gl';
+	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { getContext, onMount } from 'svelte';
 
 	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
@@ -100,7 +101,7 @@
 			}),
 			'top-right'
 		);
-		map.addControl(new ScaleControl({ maxWidth: 80, unit: 'metric' }), 'bottom-left');
+		map.addControl(new ScaleControl({ maxWidth: 80, unit: 'metric' }), 'bottom-right');
 		map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
 
 		mapStore?.set(map);
@@ -125,8 +126,12 @@
 							'concat',
 							['get', 'name'],
 							'\n',
-							['to-string', ['get', 'elevation']],
-							' m'
+							[
+								'case',
+								['has', 'elevation'],
+								['concat', ['to-string', ['get', 'elevation']], ' m'],
+								''
+							]
 						],
 						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
 						'text-offset': [0, 1.25],
@@ -137,10 +142,12 @@
 			});
 
 			map.on('click', 'places', (e) => {
+				let groups: Record<string, boolean> = JSON.parse(e.features?.at(0)?.properties['groups']);
+				let groupNames = Object.keys(groups);
 				const description =
-					e.features?.at(0)?.properties['elevation'] +
-					' groups: ' +
-					e.features?.at(0)?.properties['groups'];
+					groupNames.length > 0
+						? '<b>Groups:</b> ' + groupNames.join(', ')
+						: "Peak doesn't belong to any groups";
 
 				const coordinates = e.lngLat;
 
@@ -175,16 +182,4 @@
 	});
 </script>
 
-<div class="map" data-testid="map" bind:this={mapContainer} />
-
-<style>
-	@import 'maplibre-gl/dist/maplibre-gl.css';
-
-	.map {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		width: 100%;
-		z-index: 1;
-	}
-</style>
+<div class="w-full h-full" data-testid="map" bind:this={mapContainer} />
