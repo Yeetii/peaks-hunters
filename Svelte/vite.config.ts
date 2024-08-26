@@ -18,5 +18,8 @@ export default defineConfig({
 			provider: 'istanbul',
 			reporter: ['text', 'json', 'html']
 		}
+	},
+	server: {
+		port: 5173
 	}
 });

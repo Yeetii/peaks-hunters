@@ -31,13 +31,6 @@
 
 	const R = 6371e3; // Earth's radius in meters
 
-	interface SummitedPeak {
-		id: string;
-		userId: string;
-		peakId: string;
-		activityIds: string[];
-	}
-
 	function toRadians(degrees: number): number {
 		return degrees * (Math.PI / 180);
 	}
@@ -66,8 +59,18 @@
 
 		queriedLocations.push(center);
 
-		return fetch(`${apiUrl}peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`)
-			.then((r) => r.json())
+		return fetch(`${apiUrl}peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`, {
+			credentials: 'include'
+		})
+			.then((r) => {
+				if (r.ok) {
+					return r.json();
+				}
+				if (r.status === 401) {
+					console.log('401 statussss');
+					$activeSession = false;
+				}
+			})
 			.then((newPeaks: FeatureCollection) => {
 				if (peaks == undefined) {
 					peaks = newPeaks;
@@ -75,27 +78,6 @@
 					let filteredPeaks = newPeaks.features.filter((feature) => !peakIds.has(feature.id));
 					filteredPeaks.forEach((peak) => peakIds.add(peak.id));
 					peaks.features = peaks.features.concat(filteredPeaks);
-				}
-				return peaks;
-			});
-	};
-
-	const fetchSummits = async (): Promise<GeoJSON> => {
-		return fetch(`${apiUrl}summitedPeaks`, { credentials: 'include' })
-			.then((r) => {
-				if (r.ok) {
-					return r.json();
-				}
-				if (r.status === 401) {
-					$activeSession = false;
-				}
-				return [];
-			})
-			.then((summitedPeaks: SummitedPeak[]) => {
-				for (var summitedPeak of summitedPeaks) {
-					var peakId = summitedPeak.peakId;
-					var properties = peaks.features.find((x) => x.id == peakId)?.properties;
-					if (properties) properties['summited'] = true;
 				}
 				return peaks;
 			});
@@ -154,11 +136,6 @@
 				});
 			});
 
-			// fetchSummits().then((peaks) => {
-			// 	const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
-			// 	placesSource.setData(peaks);
-			// });
-
 			map.on('click', 'places', (e) => {
 				const description =
 					e.features?.at(0)?.properties['elevation'] +
@@ -193,15 +170,6 @@
 					const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
 					placesSource.setData(peaks);
 				});
-			});
-
-			activeSession.subscribe((signedIn) => {
-				if (signedIn) {
-					fetchSummits().then((peaks) => {
-						const placesSource = map.getSource('places') as maplibregl.GeoJSONSource;
-						placesSource.setData(peaks);
-					});
-				}
 			});
 		});
 	});
