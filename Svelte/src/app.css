@@ -25,4 +25,8 @@
 	a[target='_blank']::after {
 		content: ' 🔗';
 	}
+
+	h2 {
+		@apply text-2xl font-bold;
+	}
 }

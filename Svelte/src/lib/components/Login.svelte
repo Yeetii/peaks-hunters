@@ -46,20 +46,14 @@
 	}
 
 	onMount(() => {
-		if (!getCookie('session')) {
+		if (getCookie('session')) {
+			activeSession.set(true);
+		} else {
 			activeSession.set(false);
 		}
 		readCode();
 	});
 </script>
-
-<!-- <button
-	use:melt={$trigger}
-	class="rounded-md bg-white px-4 py-2
-    font-medium leading-none text-magnum-700 shadow-lg hover:opacity-75 absolute z-10"
->
-	Login
-</button> -->
 
 {#if $open}
 	<div class="" use:melt={$portalled}>

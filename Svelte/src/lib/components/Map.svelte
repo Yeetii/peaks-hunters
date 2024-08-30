@@ -3,6 +3,7 @@
 	import { PUBLIC_MAPTILER_KEY } from '$env/static/public';
 	import summitedPeakIcon from '$lib/assets/peak-summited.png';
 	import peakIcon from '$lib/assets/peak.png';
+	import Sidebar from '$lib/components/Sidebar.svelte';
 	import type { MapStore } from '$lib/stores';
 	import { activeSession, MAPSTORE_CONTEXT_KEY } from '$lib/stores';
 	import type { Feature, FeatureCollection, GeoJSON, GeoJsonProperties, Geometry } from 'geojson';
@@ -38,6 +39,8 @@
 	let peakIds = new Set();
 
 	const R = 6371e3; // Earth's radius in meters
+
+	let leftSidebarCollapsed = true;
 
 	function toRadians(degrees: number): number {
 		return degrees * (Math.PI / 180);
@@ -91,6 +94,23 @@
 				return [peaks, summitedPeaks];
 			});
 	};
+
+	function handleSidebarToggle(event: CustomEvent) {
+		const { side, collapsed } = event.detail;
+		if (side === 'left') {
+			leftSidebarCollapsed = collapsed;
+		}
+
+		mapStore?.update((map) => {
+			if (map) {
+				const padding = {
+					left: leftSidebarCollapsed ? 0 : 300
+				};
+				map.easeTo({ padding, duration: 1000 });
+			}
+			return map;
+		});
+	}
 
 	onMount(() => {
 		const map = new Map({
@@ -277,4 +297,11 @@
 	});
 </script>
 
-<div class="map w-full h-full" data-testid="map" bind:this={mapContainer} />
+<div class="map w-full h-full" data-testid="map" bind:this={mapContainer}>
+	<Sidebar
+		side="left"
+		content="Waiting for stats..."
+		bind:collapsed={leftSidebarCollapsed}
+		on:toggle={handleSidebarToggle}
+	/>
+</div>
