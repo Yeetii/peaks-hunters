@@ -32,22 +32,24 @@
 	}
 
 	onMount(() => {
-		if ($activeSession) {
-			return fetch(`${apiUrl}summitsStats`, {
-				credentials: 'include'
-			})
-				.then((r) => {
-					if (r.ok) {
-						return r.json();
-					}
-					if (r.status === 401) {
-						$activeSession = false;
-					}
+		activeSession.subscribe((value) => {
+			if (value) {
+				fetch(`${apiUrl}summitsStats`, {
+					credentials: 'include'
 				})
-				.then((stats: SummitsStats) => {
-					summitsStats = stats;
-				});
-		}
+					.then((r) => {
+						if (r.ok) {
+							return r.json();
+						}
+						if (r.status === 401) {
+							activeSession.set(false);
+						}
+					})
+					.then((stats: SummitsStats) => {
+						summitsStats = stats;
+					});
+			}
+		});
 	});
 </script>
 

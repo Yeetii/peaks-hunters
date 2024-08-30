@@ -78,7 +78,7 @@
 					return r.json();
 				}
 				if (r.status === 401) {
-					$activeSession = false;
+					activeSession.set(false);
 				}
 			})
 			.then((newPeaks: FeatureCollection) => {

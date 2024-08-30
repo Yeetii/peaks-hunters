@@ -37,9 +37,9 @@
 			fetch(`${apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then((r) => {
 				goto('/');
 				if (r.ok) {
-					$activeSession = true;
+					activeSession.set(true);
 				} else {
-					$activeSession = false;
+					activeSession.set(false);
 				}
 			});
 		}
