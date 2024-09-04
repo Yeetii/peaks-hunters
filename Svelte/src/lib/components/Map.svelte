@@ -115,7 +115,7 @@
 	onMount(() => {
 		const map = new Map({
 			container: mapContainer,
-			style: `https://api.maptiler.com/maps/topo-v2/style.json?key=${PUBLIC_MAPTILER_KEY}`,
+			style: `https://api.maptiler.com/maps/c852a07e-70f5-49c3-aebf-ad7d488e4495/style.json?key=${PUBLIC_MAPTILER_KEY}`,
 			center: [13.0509, 63.41698],
 			zoom: 12,
 			hash: true,
