@@ -139,6 +139,13 @@
 			map.loadImage(peakIcon).then((image) => map.addImage('peakIcon', image.data));
 			map.loadImage(summitedPeakIcon).then((image) => map.addImage('summitedPeakIcon', image.data));
 
+			map.addControl(
+				new maplibregl.TerrainControl({
+					source: 'terrain_rgb',
+					exaggeration: 1.5
+				})
+			);
+
 			fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
 				map.addSource('peaks', {
 					type: 'geojson',
@@ -182,7 +189,7 @@
 								]
 							]
 						],
-						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+						'text-font': ['Roboto Regular', 'Noto Sans Regular'],
 						'text-offset': [0, 1.25],
 						'text-anchor': 'top',
 						'icon-size': 0.75
@@ -214,7 +221,7 @@
 								]
 							]
 						],
-						'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+						'text-font': ['Roboto Regular', 'Noto Sans Regular'],
 						'text-offset': [0, 1.25],
 						'text-anchor': 'top',
 						'icon-size': 0.75
