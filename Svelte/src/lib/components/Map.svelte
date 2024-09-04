@@ -16,7 +16,7 @@
 		ScaleControl
 	} from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { getContext, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 
 	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 
@@ -134,6 +134,10 @@
 		map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
 
 		mapStore?.set(map);
+
+		map.on('error', (e) => {
+			console.error('Map error: ', e);
+		});
 
 		map.on('load', () => {
 			map.loadImage(peakIcon).then((image) => map.addImage('peakIcon', image.data));
@@ -292,15 +296,23 @@
 			});
 
 			map.on('moveend', () => {
-				console.log(map.getZoom());
-				fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
-					const peaksSource = map.getSource('peaks') as maplibregl.GeoJSONSource;
-					const summitedPeaksSource = map.getSource('summitedPeaks') as maplibregl.GeoJSONSource;
-					peaksSource.setData(peaks);
-					summitedPeaksSource.setData(summitedPeaks);
-				});
+				console.log('Current zoom: ', map.getZoom());
+				try {
+					fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
+						const peaksSource = map.getSource('peaks') as maplibregl.GeoJSONSource;
+						const summitedPeaksSource = map.getSource('summitedPeaks') as maplibregl.GeoJSONSource;
+						peaksSource.setData(peaks);
+						summitedPeaksSource.setData(summitedPeaks);
+					});
+				} catch (error) {
+					console.log('Error in movend event:', error);
+				}
 			});
 		});
+	});
+
+	onDestroy(() => {
+		console.log('Map component being destroyed');
 	});
 </script>
 
