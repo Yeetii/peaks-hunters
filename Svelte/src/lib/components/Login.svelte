@@ -27,31 +27,26 @@
 		if (parts.length === 2) return parts?.pop()?.split(';').shift();
 	}
 
-	function readCode() {
+	async function readCode() {
 		const urlParams = new URLSearchParams(window.location.search);
 		const hasCode = urlParams.has('code');
 
 		if (hasCode) {
 			$open = false;
 			var code = urlParams.get('code');
-			fetch(`${apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then((r) => {
+			await fetch(`${apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then(() => {
 				goto('/');
-				if (r.ok) {
-					activeSession.set(true);
-				} else {
-					activeSession.set(false);
-				}
 			});
 		}
 	}
 
-	onMount(() => {
+	onMount(async () => {
+		await readCode();
 		if (getCookie('session')) {
 			activeSession.set(true);
 		} else {
 			activeSession.set(false);
 		}
-		readCode();
 	});
 </script>
 
