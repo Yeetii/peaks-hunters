@@ -1,5 +1,5 @@
-import { dev } from '$app/environment';
-import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from 'geojson';
+import { browser, dev } from '$app/environment';
+import type { FeatureCollection } from 'geojson';
 import { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
 import { activeSession } from './sessionStore';
@@ -13,15 +13,17 @@ const queriedTiles = new Set<string>();
 const ongoingFetches = new Map<string, { promise: Promise<void>; controller: AbortController }>();
 
 function createPeaksStore() {
+	const initialPeaks = loadPeaksFromLocalStorage('peaks');
+	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
+
+	initialPeaks.features.forEach((peak) => {
+		var xyIndex = `${peak?.properties?.x},${peak?.properties?.y}`;
+		queriedTiles.add(xyIndex);
+	});
+
 	const { subscribe, update, set } = writable({
-		peaks: {
-			type: 'FeatureCollection',
-			features: [] as Feature<Geometry, GeoJsonProperties>[]
-		} as FeatureCollection,
-		summitedPeaks: {
-			type: 'FeatureCollection',
-			features: [] as Feature<Geometry, GeoJsonProperties>[]
-		} as FeatureCollection
+		peaks: initialPeaks,
+		summitedPeaks: initialSummitedPeaks
 	});
 
 	const fetchPeaksForTile = async (x: number, y: number, controller: AbortController) => {
@@ -33,6 +35,7 @@ function createPeaksStore() {
 					newPeaks.features.forEach((peak) => {
 						store.peaks.features.push(peak);
 					});
+					savePeaksToLocalStorage(store.peaks, store.summitedPeaks);
 					return store;
 				});
 			})
@@ -87,6 +90,7 @@ function createPeaksStore() {
 			const summitedPeaks = await response.json();
 			update((store) => {
 				store.summitedPeaks = summitedPeaks;
+				savePeaksToLocalStorage(store.peaks, store.summitedPeaks);
 				return store;
 			});
 		});
@@ -100,23 +104,31 @@ function createPeaksStore() {
 
 	return {
 		subscribe,
-		fetchPeaks,
-		reset: () => {
-			set({
-				peaks: {
-					type: 'FeatureCollection',
-					features: []
-				},
-				summitedPeaks: {
-					type: 'FeatureCollection',
-					features: []
-				}
-			});
-		}
+		fetchPeaks
 	};
 }
 
 export const peaksStore = createPeaksStore();
+
+function savePeaksToLocalStorage(peaks: FeatureCollection, summitedPeaks: FeatureCollection) {
+	localStorage.setItem('peaks', JSON.stringify(peaks));
+	localStorage.setItem('summitedPeaks', JSON.stringify(summitedPeaks));
+}
+
+function loadPeaksFromLocalStorage(collectionName: 'peaks' | 'summitedPeaks'): FeatureCollection {
+	const emptyFeatureCollection: FeatureCollection = { type: 'FeatureCollection', features: [] };
+	if (browser) {
+		const storedPeaks = localStorage.getItem(collectionName);
+		if (storedPeaks) {
+			try {
+				return JSON.parse(storedPeaks) as FeatureCollection;
+			} catch {
+				return emptyFeatureCollection;
+			}
+		}
+	}
+	return emptyFeatureCollection;
+}
 
 function calculateDistance(coord1: LngLat, coord2: LngLat): number {
 	const R = 6371e3; // Earth's radius in meters
