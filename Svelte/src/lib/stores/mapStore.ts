@@ -1,5 +1,6 @@
-import { writable } from 'svelte/store';
+import type { FeatureCollection } from 'geojson';
 import type { Map as MaplibreMap, StyleSetterOptions } from 'maplibre-gl';
+import { writable } from 'svelte/store';
 
 export const MAPSTORE_CONTEXT_KEY = 'maplibre-map-store';
 
@@ -109,11 +110,30 @@ export const createMapStore = () => {
 		});
 	};
 
+	const updateMapSources = (peaks: FeatureCollection, summitedPeaks: FeatureCollection) => {
+		update((map) => {
+			if (map) {
+				const peaksSource = map.getSource('peaks') as maplibregl.GeoJSONSource;
+				const summitedPeaksSource = map.getSource('summitedPeaks') as maplibregl.GeoJSONSource;
+
+				if (peaksSource) {
+					peaksSource.setData(peaks);
+				}
+				if (summitedPeaksSource) {
+					summitedPeaksSource.setData(summitedPeaks);
+				}
+			}
+			map.triggerRepaint();
+			return map;
+		});
+	};
+
 	return {
 		subscribe,
 		update,
 		set,
 		setPaintProperty,
-		setLayoutProperty
+		setLayoutProperty,
+		updateMapSources
 	};
 };

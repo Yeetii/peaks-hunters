@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { PUBLIC_MAPTILER_KEY } from '$env/static/public';
 	import summitedPeakIcon from '$lib/assets/peak-summited.png';
 	import peakIcon from '$lib/assets/peak.png';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import type { MapStore } from '$lib/stores';
 	import { activeSession, MAPSTORE_CONTEXT_KEY } from '$lib/stores';
-	import type { Feature, FeatureCollection, GeoJSON, GeoJsonProperties, Geometry } from 'geojson';
+	import { peaksStore } from '$lib/stores/peaksStore';
 	import maplibregl, {
 		AttributionControl,
 		GeolocateControl,
@@ -18,95 +17,25 @@
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { getContext, onMount } from 'svelte';
 
-	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
-
 	let mapStore: MapStore = getContext(MAPSTORE_CONTEXT_KEY);
 
 	let mapContainer: HTMLDivElement;
 
-	let fetchRadius = 50000;
-	let cancelFetchZone = 0.5;
-
-	let queriedLocations = new Array<LngLat>();
-	let peaks: GeoJSON.FeatureCollection = {
-		type: 'FeatureCollection',
-		features: new Array<Feature<Geometry, GeoJsonProperties>>()
-	};
-	let summitedPeaks: GeoJSON.FeatureCollection = {
-		type: 'FeatureCollection',
-		features: new Array<Feature<Geometry, GeoJsonProperties>>()
-	};
-	let peakIds = new Set();
-
-	const R = 6371e3; // Earth's radius in meters
+	$: ({ peaks, summitedPeaks } = $peaksStore);
 
 	let leftSidebarCollapsed = true;
 
-	function toRadians(degrees: number): number {
-		return degrees * (Math.PI / 180);
-	}
-
-	function calculateDistance(p1: LngLat, p2: LngLat): number {
-		const φ1 = toRadians(p1.lat);
-		const φ2 = toRadians(p2.lat);
-		const Δφ = toRadians(p2.lat - p1.lat);
-		const Δλ = toRadians(p2.lng - p1.lng);
-
-		const a =
-			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-		return R * c; // Distance in meters
-	}
-
-	const fetchPeaks = async (center: LngLat): Promise<[peaks: GeoJSON, summitedPeaks: GeoJSON]> => {
-		var alreadyFetched = queriedLocations.some((lngLat) => {
-			var distance = calculateDistance(lngLat, center);
-			return distance < fetchRadius * cancelFetchZone;
+	const fetchPeaks = (center: LngLat) => {
+		peaksStore.fetchPeaks(center).then(() => {
+			if ($mapStore) {
+				mapStore.updateMapSources(peaks, summitedPeaks);
+			}
 		});
-
-		if (alreadyFetched) return [peaks, summitedPeaks];
-
-		queriedLocations.push(center);
-
-		return fetch(`${apiUrl}peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`, {
-			credentials: 'include'
-		})
-			.then((r) => {
-				if (r.ok) {
-					return r.json();
-				}
-				if (r.status === 401) {
-					activeSession.set(false);
-				}
-			})
-			.then((newPeaks: FeatureCollection) => {
-				let filteredPeaks = newPeaks.features.filter((feature) => !peakIds.has(feature.id));
-				filteredPeaks.forEach((peak) => peakIds.add(peak.id));
-				filteredPeaks.forEach((peak) => {
-					if (peak.properties && peak.properties['summited']) {
-						summitedPeaks.features.push(peak);
-					} else {
-						peaks.features.push(peak);
-					}
-				});
-				return [peaks, summitedPeaks];
-			});
 	};
 
 	activeSession.subscribe((active) => {
 		if (active) {
-			queriedLocations = new Array<LngLat>();
-			peakIds = new Set();
-			peaks = {
-				type: 'FeatureCollection',
-				features: new Array<Feature<Geometry, GeoJsonProperties>>()
-			};
-			summitedPeaks = {
-				type: 'FeatureCollection',
-				features: new Array<Feature<Geometry, GeoJsonProperties>>()
-			};
+			peaksStore.reset();
 		}
 	});
 
@@ -165,87 +94,85 @@
 				})
 			);
 
-			fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
-				map.addSource('peaks', {
-					type: 'geojson',
-					data: peaks,
-					cluster: true,
-					clusterMaxZoom: 10,
-					clusterRadius: 100
-				});
+			map.addSource('peaks', {
+				type: 'geojson',
+				data: peaks,
+				cluster: true,
+				clusterMaxZoom: 10,
+				clusterRadius: 100
+			});
 
-				map.addSource('summitedPeaks', {
-					type: 'geojson',
-					data: summitedPeaks,
-					cluster: true,
-					clusterMaxZoom: 7,
-					clusterRadius: 100
-				});
+			map.addSource('summitedPeaks', {
+				type: 'geojson',
+				data: summitedPeaks,
+				cluster: true,
+				clusterMaxZoom: 7,
+				clusterRadius: 100
+			});
 
-				map.addLayer({
-					id: 'peaks',
-					type: 'symbol',
-					source: 'peaks',
-					minzoom: 5,
-					layout: {
-						'icon-image': 'peakIcon',
-						'text-field': [
-							'concat',
+			map.addLayer({
+				id: 'peaks',
+				type: 'symbol',
+				source: 'peaks',
+				minzoom: 5,
+				layout: {
+					'icon-image': 'peakIcon',
+					'text-field': [
+						'concat',
+						[
+							'case',
+							['has', 'cluster'],
+							['concat', ['get', 'point_count'], ' peaks'],
 							[
-								'case',
-								['has', 'cluster'],
-								['concat', ['get', 'point_count'], ' peaks'],
+								'concat',
+								['get', 'name'],
+								'\n',
 								[
-									'concat',
-									['get', 'name'],
-									'\n',
-									[
-										'case',
-										['has', 'elevation'],
-										['concat', ['to-string', ['get', 'elevation']], ' m'],
-										''
-									]
+									'case',
+									['has', 'elevation'],
+									['concat', ['to-string', ['get', 'elevation']], ' m'],
+									''
 								]
 							]
-						],
-						'text-font': ['Roboto Regular', 'Noto Sans Regular'],
-						'text-offset': [0, 1.25],
-						'text-anchor': 'top',
-						'icon-size': 0.75
-					}
-				});
+						]
+					],
+					'text-font': ['Roboto Regular', 'Noto Sans Regular'],
+					'text-offset': [0, 1.25],
+					'text-anchor': 'top',
+					'icon-size': 0.75
+				}
+			});
 
-				map.addLayer({
-					id: 'summitedPeaks',
-					type: 'symbol',
-					source: 'summitedPeaks',
-					layout: {
-						'icon-image': 'summitedPeakIcon',
-						'text-field': [
-							'concat',
+			map.addLayer({
+				id: 'summitedPeaks',
+				type: 'symbol',
+				source: 'summitedPeaks',
+				layout: {
+					'icon-image': 'summitedPeakIcon',
+					'text-field': [
+						'concat',
+						[
+							'case',
+							['has', 'cluster'],
+							['concat', ['get', 'point_count'], ' peaks'],
 							[
-								'case',
-								['has', 'cluster'],
-								['concat', ['get', 'point_count'], ' peaks'],
+								'concat',
+								['get', 'name'],
+								'\n',
 								[
-									'concat',
-									['get', 'name'],
-									'\n',
-									[
-										'case',
-										['has', 'elevation'],
-										['concat', ['to-string', ['get', 'elevation']], ' m'],
-										''
-									]
+									'case',
+									['has', 'elevation'],
+									['concat', ['to-string', ['get', 'elevation']], ' m'],
+									''
 								]
 							]
-						],
-						'text-font': ['Roboto Regular', 'Noto Sans Regular'],
-						'text-offset': [0, 1.25],
-						'text-anchor': 'top',
-						'icon-size': 0.75
-					}
-				});
+						]
+					],
+					'text-font': ['Roboto Regular', 'Noto Sans Regular'],
+					'text-offset': [0, 1.25],
+					'text-anchor': 'top',
+					'icon-size': 0.75
+				}
 			});
 
 			map.on('click', 'peaks', (e) => {
@@ -310,13 +237,10 @@
 				map.getCanvas().style.cursor = '';
 			});
 
+			fetchPeaks(map.getCenter());
+
 			map.on('moveend', () => {
-				fetchPeaks(map.getCenter()).then(([peaks, summitedPeaks]) => {
-					const peaksSource = map.getSource('peaks') as maplibregl.GeoJSONSource;
-					const summitedPeaksSource = map.getSource('summitedPeaks') as maplibregl.GeoJSONSource;
-					peaksSource.setData(peaks);
-					summitedPeaksSource.setData(summitedPeaks);
-				});
+				fetchPeaks(map.getCenter());
 			});
 		});
 	});
