@@ -79,7 +79,7 @@
 
 		mapStore?.set(map);
 
-		map.on('error', (e) => {
+		map.on('error', (e: Error) => {
 			console.error('Map error: ', e);
 		});
 
@@ -175,7 +175,9 @@
 				}
 			});
 
-			map.on('click', 'peaks', (e) => {
+			function handlePopup(
+				e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }
+			) {
 				let groups: Record<string, boolean> = JSON.parse(e.features?.at(0)?.properties['groups']);
 				let groupNames = Object.keys(groups);
 				const description =
@@ -196,30 +198,10 @@
 					.setLngLat(new LngLat(coordinates.lng, coordinates.lat))
 					.setHTML(description)
 					.addTo(map);
-			});
+			}
 
-			map.on('click', 'summitedPeaks', (e) => {
-				let groups: Record<string, boolean> = JSON.parse(e.features?.at(0)?.properties['groups']);
-				let groupNames = Object.keys(groups);
-				const description =
-					groupNames.length > 0
-						? '<b>Groups:</b> ' + groupNames.join(', ')
-						: "Peak doesn't belong to any groups";
-
-				const coordinates = e.lngLat;
-
-				// Ensure that if the map is zoomed out such that multiple
-				// copies of the feature are visible, the popup appears
-				// over the copy being pointed to.
-				while (Math.abs(e.lngLat.lng - coordinates.lng) > 180) {
-					coordinates.lng += e.lngLat.lng > coordinates.lng ? 360 : -360;
-				}
-
-				new maplibregl.Popup()
-					.setLngLat(new LngLat(coordinates.lng, coordinates.lat))
-					.setHTML(description)
-					.addTo(map);
-			});
+			map.on('click', 'peaks', handlePopup);
+			map.on('click', 'summitedPeaks', handlePopup);
 
 			map.on('mouseenter', 'peaks', () => {
 				map.getCanvas().style.cursor = 'pointer';
