@@ -2,6 +2,7 @@ import { dev } from '$app/environment';
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from 'geojson';
 import { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
+import { activeSession } from './sessionStore';
 
 const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 const tileZoom = 11;
@@ -47,7 +48,7 @@ function createPeaksStore() {
 	};
 
 	const fetchPeaks = async (center: LngLat) => {
-		var tileIndices = wsg84ToTileIndices(center, tileZoom);
+		const tileIndices = wsg84ToTileIndices(center, tileZoom);
 
 		// Cancel ongoing fetches that are too far away
 		for (const [key, { controller }] of ongoingFetches.entries()) {
@@ -58,7 +59,7 @@ function createPeaksStore() {
 			}
 		}
 
-		var fetchTasks = [];
+		const fetchTasks = [];
 
 		for (let x = tileIndices.x - 1; x <= tileIndices.x + 1; x++) {
 			for (let y = tileIndices.y - 1; y <= tileIndices.y + 1; y++) {
@@ -75,6 +76,27 @@ function createPeaksStore() {
 
 		await Promise.all(fetchTasks);
 	};
+
+	const fetchSummitedPeaks = async () => {
+		fetch(`${apiUrl}summitedPeaks`, {
+			credentials: 'include'
+		}).then(async (response) => {
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+			const summitedPeaks = await response.json();
+			update((store) => {
+				store.summitedPeaks = summitedPeaks;
+				return store;
+			});
+		});
+	};
+
+	activeSession.subscribe((activeSession) => {
+		if (activeSession) {
+			fetchSummitedPeaks();
+		}
+	});
 
 	return {
 		subscribe,

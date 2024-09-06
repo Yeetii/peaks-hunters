@@ -24,6 +24,7 @@
 	$: ({ peaks, summitedPeaks } = $peaksStore);
 
 	let leftSidebarCollapsed = true;
+	const minFetchPeakZoom = 6.5;
 
 	activeSession.subscribe((active) => {
 		console.log('active', active);
@@ -211,8 +212,14 @@
 
 			peaksStore.fetchPeaks(map.getCenter());
 
+			map.on('zoom', () => {
+				console.log('zoom', map.getZoom());
+			});
+
 			map.on('move', () => {
-				peaksStore.fetchPeaks(map.getCenter());
+				if (map.getZoom() > minFetchPeakZoom) {
+					peaksStore.fetchPeaks(map.getCenter());
+				}
 			});
 		});
 	});
