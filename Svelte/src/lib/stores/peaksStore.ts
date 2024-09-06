@@ -4,8 +4,10 @@ import type { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
 
 const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
-const fetchRadius = 50000;
-const cancelFetchZone = 0.5;
+const tileZoom = 11;
+
+// By tile index "x,y"
+const queriedTiles = new Set<string>();
 
 function createPeaksStore() {
 	const { subscribe, update, set } = writable({
@@ -16,45 +18,42 @@ function createPeaksStore() {
 		summitedPeaks: {
 			type: 'FeatureCollection',
 			features: [] as Feature<Geometry, GeoJsonProperties>[]
-		} as FeatureCollection,
-		queriedLocations: [] as LngLat[],
-		peakIds: new Set<string>()
+		} as FeatureCollection
 	});
+
+	const fetchPeaksForTile = async (x: number, y: number) => {
+		await fetch(`${apiUrl}peaks/${x}/${y}`)
+			.then((r) => r.json())
+			.then((newPeaks: FeatureCollection) => {
+				update((store) => {
+					newPeaks.features.forEach((peak) => {
+						store.peaks.features.push(peak);
+					});
+					return store;
+				});
+			});
+	};
+
+	const fetchPeaks = async (center: LngLat) => {
+		var tileIndices = wsg84ToTileIndices(center, tileZoom);
+
+		var fetchTasks = [];
+
+		for (let x = tileIndices.x - 1; x <= tileIndices.x + 1; x++) {
+			for (let y = tileIndices.y - 1; y <= tileIndices.y + 1; y++) {
+				const alreadyFetched = queriedTiles.has(`${x},${y}`);
+				if (alreadyFetched) continue;
+				fetchTasks.push(fetchPeaksForTile(x, y));
+				queriedTiles.add(`${x},${y}`);
+			}
+		}
+
+		await Promise.all(fetchTasks);
+	};
 
 	return {
 		subscribe,
-		fetchPeaks: async (center: LngLat) => {
-			update((store) => {
-				const alreadyFetched = store.queriedLocations.some((lngLat) => {
-					const distance = calculateDistance(lngLat, center);
-					return distance < fetchRadius * cancelFetchZone;
-				});
-
-				if (alreadyFetched) return store;
-
-				store.queriedLocations.push(center);
-
-				fetch(`${apiUrl}peaks?lat=${center.lat}&lon=${center.lng}&radius=${fetchRadius}`, {
-					credentials: 'include'
-				})
-					.then((r) => r.json())
-					.then((newPeaks: FeatureCollection) => {
-						const filteredPeaks = newPeaks.features.filter(
-							(feature) => !store.peakIds.has(feature.id as string)
-						);
-						filteredPeaks.forEach((peak) => {
-							store.peakIds.add(peak.id as string);
-							if (peak.properties && peak.properties['summited']) {
-								store.summitedPeaks.features.push(peak);
-							} else {
-								store.peaks.features.push(peak);
-							}
-						});
-					});
-
-				return store;
-			});
-		},
+		fetchPeaks,
 		reset: () => {
 			set({
 				peaks: {
@@ -64,9 +63,7 @@ function createPeaksStore() {
 				summitedPeaks: {
 					type: 'FeatureCollection',
 					features: []
-				},
-				queriedLocations: [],
-				peakIds: new Set()
+				}
 			});
 		}
 	};
@@ -74,21 +71,19 @@ function createPeaksStore() {
 
 export const peaksStore = createPeaksStore();
 
-function toRadians(degrees: number): number {
-	return degrees * (Math.PI / 180);
-}
-
-const R = 6371e3; // Earth's radius in meters
-function calculateDistance(p1: LngLat, p2: LngLat): number {
-	const φ1 = toRadians(p1.lat);
-	const φ2 = toRadians(p2.lat);
-	const Δφ = toRadians(p2.lat - p1.lat);
-	const Δλ = toRadians(p2.lng - p1.lng);
-
-	const a =
-		Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-		Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-	return R * c; // Distance in meters
+function wsg84ToTileIndices(coord: LngLat, zoom: number): { x: number; y: number } {
+	const lon = coord.lng;
+	const lat = coord.lat;
+	const n = Math.pow(2, zoom);
+	const xtile = Math.floor(((lon + 180) / 360) * n);
+	const ytile = Math.floor(
+		((1 -
+			Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) /
+			2) *
+			n
+	);
+	return {
+		x: xtile,
+		y: ytile
+	};
 }

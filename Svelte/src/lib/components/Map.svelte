@@ -25,18 +25,8 @@
 
 	let leftSidebarCollapsed = true;
 
-	const fetchPeaks = (center: LngLat) => {
-		peaksStore.fetchPeaks(center).then(() => {
-			if ($mapStore) {
-				mapStore.updateMapSources(peaks, summitedPeaks);
-			}
-		});
-	};
-
 	activeSession.subscribe((active) => {
-		if (active) {
-			peaksStore.reset();
-		}
+		console.log('active', active);
 	});
 
 	function handleSidebarToggle(event: CustomEvent) {
@@ -219,10 +209,10 @@
 				map.getCanvas().style.cursor = '';
 			});
 
-			fetchPeaks(map.getCenter());
+			peaksStore.fetchPeaks(map.getCenter());
 
-			map.on('moveend', () => {
-				fetchPeaks(map.getCenter());
+			map.on('move', () => {
+				peaksStore.fetchPeaks(map.getCenter());
 			});
 		});
 	});

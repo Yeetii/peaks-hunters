@@ -1,6 +1,7 @@
 import type { FeatureCollection } from 'geojson';
 import type { Map as MaplibreMap, StyleSetterOptions } from 'maplibre-gl';
 import { writable } from 'svelte/store';
+import { peaksStore } from './peaksStore';
 
 export const MAPSTORE_CONTEXT_KEY = 'maplibre-map-store';
 
@@ -122,18 +123,21 @@ export const createMapStore = () => {
 				if (summitedPeaksSource) {
 					summitedPeaksSource.setData(summitedPeaks);
 				}
+				map.triggerRepaint();
 			}
-			map.triggerRepaint();
 			return map;
 		});
 	};
+
+	peaksStore.subscribe(({ peaks, summitedPeaks }) => {
+		updateMapSources(peaks, summitedPeaks);
+	});
 
 	return {
 		subscribe,
 		update,
 		set,
 		setPaintProperty,
-		setLayoutProperty,
-		updateMapSources
+		setLayoutProperty
 	};
 };
