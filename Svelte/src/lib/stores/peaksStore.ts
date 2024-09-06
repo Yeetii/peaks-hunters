@@ -17,11 +17,11 @@ function createPeaksStore() {
 	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
 
 	initialPeaks.features.forEach((peak) => {
-		var xyIndex = `${peak?.properties?.x},${peak?.properties?.y}`;
+		const xyIndex = `${peak?.properties?.x},${peak?.properties?.y}`;
 		queriedTiles.add(xyIndex);
 	});
 
-	const { subscribe, update, set } = writable({
+	const { subscribe, update } = writable({
 		peaks: initialPeaks,
 		summitedPeaks: initialSummitedPeaks
 	});

@@ -48,11 +48,20 @@
 	}
 
 	onMount(() => {
+		var center = new LngLat(13.0509, 63.41698);
+		var zoom = 12;
+		const mapCenter = localStorage.getItem('mapCenter');
+		const mapZoom = localStorage.getItem('mapZoom');
+		if (mapCenter && mapZoom) {
+			center = JSON.parse(mapCenter);
+			zoom = parseFloat(mapZoom);
+		}
+
 		const map = new Map({
 			container: mapContainer,
 			style: `https://api.maptiler.com/maps/c852a07e-70f5-49c3-aebf-ad7d488e4495/style.json?key=${PUBLIC_MAPTILER_KEY}`,
-			center: [13.0509, 63.41698],
-			zoom: 12,
+			center: center,
+			zoom: zoom,
 			hash: true,
 			attributionControl: false,
 			maxZoom: 14
@@ -220,6 +229,11 @@
 				if (map.getZoom() > minFetchPeakZoom) {
 					peaksStore.fetchPeaks(map.getCenter());
 				}
+			});
+
+			map.on('moveend', () => {
+				localStorage.setItem('mapCenter', JSON.stringify(map.getCenter()));
+				localStorage.setItem('mapZoom', map.getZoom().toString());
 			});
 		});
 	});
