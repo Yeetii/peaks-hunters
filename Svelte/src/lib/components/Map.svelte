@@ -63,8 +63,7 @@
 			center: center,
 			zoom: zoom,
 			hash: true,
-			attributionControl: false,
-			maxZoom: 14
+			attributionControl: false
 		});
 		map.addControl(new NavigationControl({}), 'top-right');
 		map.addControl(
