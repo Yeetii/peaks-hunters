@@ -2,6 +2,7 @@
 	import { dev } from '$app/environment';
 	import { activeSession } from '$lib/stores';
 	import { createEventDispatcher, onMount } from 'svelte';
+	import Filters from './Filters.svelte';
 
 	export let side: 'left' | 'right' = 'left';
 	export let collapsed = true;
@@ -60,24 +61,30 @@
 	<div
 		class="absolute w-[95%] h-[95%] bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] font-mono text-sm text-gray-500 p-4"
 	>
-		<h2>Summits stats</h2>
-		{#if summitsStats}
-			<div class="flex flex-col gap-4 mt-6">
-				<p>Total summits: {summitsStats.totalPeaksClimbed}</p>
-				<ol>
-					{#each summitsStats.mostVisitedPeaks as peak, index}
-						<li>{index + 1}. {peak.name} ({peak.elevation}m) ({peak.count}x)</li>
-					{/each}
-				</ol>
-				<ul>
-					{#each summitsStats.totalPeaksClimbedCategorized as count, index}
-						<li>{index == 0 ? '<1000' : '≥' + index * 1000}m: {count}</li>
-					{/each}
-				</ul>
-			</div>
-		{:else}
-			{content}
-		{/if}
+		<div>
+			<h2 class="mb-6">Summits stats</h2>
+			{#if summitsStats}
+				<div class="flex flex-col gap-4">
+					<p>Total summits: {summitsStats.totalPeaksClimbed}</p>
+					<ol>
+						{#each summitsStats.mostVisitedPeaks as peak, index}
+							<li>{index + 1}. {peak.name} ({peak.elevation}m) ({peak.count}x)</li>
+						{/each}
+					</ol>
+					<ul>
+						{#each summitsStats.totalPeaksClimbedCategorized as count, index}
+							<li>{index == 0 ? '<1000' : '≥' + index * 1000}m: {count}</li>
+						{/each}
+					</ul>
+				</div>
+			{:else}
+				{content}
+			{/if}
+		</div>
+		<div>
+			<h2 class="mt-6">Filters</h2>
+			<Filters />
+		</div>
 	</div>
 	<div
 		role="button"

@@ -1,6 +1,7 @@
 import type { FeatureCollection } from 'geojson';
 import type { Map as MaplibreMap, StyleSetterOptions } from 'maplibre-gl';
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
+import { selectedPeaksGroups } from './filtersStore';
 import { peaksStore } from './peaksStore';
 
 export const MAPSTORE_CONTEXT_KEY = 'maplibre-map-store';
@@ -129,8 +130,44 @@ export const createMapStore = () => {
 		});
 	};
 
+	const filterPeaks = (
+		peaks: FeatureCollection,
+		summitedPeaks: FeatureCollection
+	): { filteredPeaks: FeatureCollection; filteredSummitedPeaks: FeatureCollection } => {
+		const selectedGroups = get(selectedPeaksGroups);
+
+		if (selectedGroups.length === 0) {
+			return { filteredPeaks: peaks, filteredSummitedPeaks: summitedPeaks };
+		}
+
+		const selectedPeakIds = selectedGroups.flatMap((group) => group.peakIds);
+
+		const filteredPeaks: FeatureCollection = {
+			type: 'FeatureCollection',
+			features: peaks.features.filter(
+				(feature) => feature.id !== undefined && selectedPeakIds.includes(feature.id as string)
+			)
+		};
+
+		const filteredSummitedPeaks: FeatureCollection = {
+			type: 'FeatureCollection',
+			features: summitedPeaks.features.filter(
+				(feature) => feature.id !== undefined && selectedPeakIds.includes(feature.id as string)
+			)
+		};
+
+		return { filteredPeaks, filteredSummitedPeaks };
+	};
+
 	peaksStore.subscribe(({ peaks, summitedPeaks }) => {
-		updateMapSources(peaks, summitedPeaks);
+		const { filteredPeaks, filteredSummitedPeaks } = filterPeaks(peaks, summitedPeaks);
+		updateMapSources(filteredPeaks, filteredSummitedPeaks);
+	});
+
+	selectedPeaksGroups.subscribe(() => {
+		const { peaks, summitedPeaks } = get(peaksStore);
+		const { filteredPeaks, filteredSummitedPeaks } = filterPeaks(peaks, summitedPeaks);
+		updateMapSources(filteredPeaks, filteredSummitedPeaks);
 	});
 
 	return {
