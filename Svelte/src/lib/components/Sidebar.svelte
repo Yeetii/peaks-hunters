@@ -93,7 +93,7 @@
 		on:click={toggleSidebar}
 		on:keydown={(e) => e.key === 'Enter' && toggleSidebar()}
 	>
-		{#if side === 'left'}
+		{#if collapsed}
 			→
 		{:else}
 			←
