@@ -41,26 +41,24 @@
 </script>
 
 <div class="flex flex-col gap-1">
-	<!-- svelte-ignore a11y-label-has-associated-control - $label contains the 'for' attribute -->
 	<label use:melt={$label}>
 		<span class="text-sm font-medium text-magnum-900">Filter peaks by collection: </span>
-	</label>
-
-	<div class="relative">
-		<input
-			use:melt={$input}
-			class="flex h-10 items-center justify-between rounded-lg bg-white
-            px-3 pr-12 text-black"
-			placeholder="Jämtlands fjäll..."
-		/>
-		<div class="absolute right-2 top-1/2 z-10 -translate-y-1/2 text-magnum-900">
-			{#if $open}
-				⬆︎
-			{:else}
-				⬇︎
-			{/if}
+		<div class="relative">
+			<input
+				use:melt={$input}
+				class="flex h-10 items-center justify-between rounded-lg bg-white
+                px-3 pr-12 text-black"
+				placeholder="Jämtlands fjäll..."
+			/>
+			<div class="absolute right-2 top-1/2 z-10 -translate-y-1/2 text-magnum-900">
+				{#if $open}
+					⬆︎
+				{:else}
+					⬇︎
+				{/if}
+			</div>
 		</div>
-	</div>
+	</label>
 </div>
 {#if $open}
 	<ul
@@ -68,10 +66,10 @@
 		use:melt={$menu}
 		transition:fly={{ duration: 150, y: -5 }}
 	>
-		<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 		<div
 			class="flex max-h-full flex-col gap-0 overflow-y-auto bg-white px-2 py-2 text-black"
 			tabindex="0"
+			role="listbox"
 		>
 			{#each filteredPeakGroups as peaksGroup, index (index)}
 				<li
