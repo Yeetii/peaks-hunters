@@ -2,6 +2,7 @@
 	import { dev } from '$app/environment';
 	import { activeSession } from '$lib/stores';
 	import { createEventDispatcher, onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import Filters from './Filters.svelte';
 
 	export let side: 'left' | 'right' = 'left';
@@ -52,14 +53,23 @@
 			}
 		});
 	});
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.ctrlKey && event.key === 'b') {
+			toggleSidebar();
+		}
+	}
+	let showTooltip = false;
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div
 	role="toolbar"
-	class={`absolute flex justify-center items-center w-[300px] h-full transition-transform duration-1000 z-10 ${side} ${collapsed ? 'translate-x-[-295px]' : ''} ${side === 'right' && collapsed ? '!translate-x-[295px]' : ''}`}
+	class={`fixed flex justify-center items-start w-[300px] h-full transition-transform duration-1000 z-10 ${side} ${collapsed ? 'translate-x-[-295px]' : ''} ${side === 'right' && collapsed ? '!translate-x-[295px]' : ''}`}
 >
 	<div
-		class="absolute w-[95%] h-[95%] bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] font-mono text-sm text-gray-500 p-4"
+		class="w-[95%] h-[calc(100vh-2rem)] bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] font-mono text-sm text-gray-500 p-4 overflow-y-auto"
 	>
 		<div>
 			<h2 class="mb-6">Summits stats</h2>
@@ -89,7 +99,9 @@
 	<div
 		role="button"
 		tabindex="0"
-		class={`absolute w-[1.3em] h-[1.3em] text-3xl font-sans text-gray-500 overflow-visible flex justify-center items-center bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] ${side === 'left' ? 'right-[-1.5em]' : 'left-[-1.5em]'} hover:text-[#0aa1cf] hover:cursor-pointer`}
+		on:mouseenter={() => (showTooltip = true)}
+		on:mouseleave={() => (showTooltip = false)}
+		class={`absolute top-1/2 transform -translate-y-1/2 w-[1.3em] h-[1.3em] text-3xl font-sans text-gray-500 overflow-visible flex justify-center items-center bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] ${side === 'left' ? 'right-[-1.5em]' : 'left-[-1.5em]'} hover:text-[#0aa1cf] hover:cursor-pointer`}
 		on:click={toggleSidebar}
 		on:keydown={(e) => e.key === 'Enter' && toggleSidebar()}
 	>
@@ -97,6 +109,17 @@
 			→
 		{:else}
 			←
+		{/if}
+
+		{#if showTooltip}
+			<div
+				transition:fade={{ duration: 500 }}
+				class="absolute {side === 'left'
+					? 'left-[100%] ml-2'
+					: 'right-[100%] mr-2'} whitespace-nowrap bg-gray-800 text-white text-sm rounded px-2 py-1"
+			>
+				{collapsed ? 'Open' : 'Close'} sidebar (Ctrl+B)
+			</div>
 		{/if}
 	</div>
 </div>
