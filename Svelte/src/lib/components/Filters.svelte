@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { peaksStore } from '$lib/stores/peaksStore';
 	import { createCombobox, melt, type ComboboxOptionProps } from '@melt-ui/svelte';
+	import type { FeatureCollection } from 'geojson';
 	import { fly } from 'svelte/transition';
 	import { peaksGroups, selectedPeaksGroups, type PeakGroup } from '../stores/filtersStore';
 
@@ -38,11 +40,20 @@
 				return name.toLowerCase().includes(normalizedInput);
 			})
 		: $peaksGroups;
+
+	const summitedPeaksInGroup = (
+		summitedPeaks: FeatureCollection,
+		peaksInGroup: string[]
+	): number => {
+		const peaksInGroupIds = new Set(peaksInGroup);
+		const summitedPeaksIds = new Set(summitedPeaks.features.map((p) => p.id));
+		return peaksInGroupIds.intersection(summitedPeaksIds).size;
+	};
 </script>
 
 <div class="flex flex-col gap-1">
 	<label use:melt={$label}>
-		<span class="text-sm font-medium text-magnum-900">Filter peaks by collection: </span>
+		<span class="text-sm font-medium text-magnum-800">Filter peaks by collection: </span>
 		<div class="relative">
 			<input
 				use:melt={$input}
@@ -50,7 +61,7 @@
                 px-3 pr-12 text-black"
 				placeholder="Jämtlands fjäll..."
 			/>
-			<div class="absolute right-2 top-1/2 z-10 -translate-y-1/2 text-magnum-900">
+			<div class="absolute right-2 top-1/2 z-10 -translate-y-1/2">
 				{#if $open}
 					⬆︎
 				{:else}
@@ -62,7 +73,7 @@
 </div>
 {#if $open}
 	<ul
-		class=" z-10 flex max-h-[300px] flex-col overflow-hidden rounded-lg"
+		class=" z-10 flex max-h-[400px] flex-col overflow-hidden rounded-lg"
 		use:melt={$menu}
 		transition:fly={{ duration: 150, y: -5 }}
 	>
@@ -76,11 +87,11 @@
 					use:melt={$option(toOption(peaksGroup))}
 					class="relative cursor-pointer scroll-my-2 rounded-md py-2 pl-4 pr-4
           hover:bg-magnum-100
-          data-[highlighted]:bg-magnum-200 data-[highlighted]:text-magnum-900
+          data-[highlighted]:bg-magnum-200 data-[highlighted]:text-magnum-800
             data-[disabled]:opacity-50"
 				>
 					{#if $isSelected(peaksGroup)}
-						<div class="check absolute left-2 top-1/2 z-10 text-magnum-900">✔︎</div>
+						<div class="check absolute left-2 top-1/2 z-10 text-magnum-800">✔︎</div>
 					{/if}
 					<div class="pl-4">
 						<span class="font-medium">{peaksGroup.name}</span>
@@ -92,6 +103,24 @@
 			{/each}
 		</div>
 	</ul>
+{:else}
+	<h4 class="mt-4">Selected filters:</h4>
+	<ul>
+		{#each $selectedPeaksGroups as group}
+			<li>
+				{group.name}
+				{summitedPeaksInGroup($peaksStore.summitedPeaks, group.peakIds)}/{group.amountOfPeaks}
+			</li>
+		{/each}
+	</ul>
+	{#if $selectedPeaksGroups.length > 0}
+		<button
+			on:click={() => selected.set(undefined)}
+			class="mt-2 px-4 py-2 bg-magnum-500 text-white rounded-md hover:bg-magnum-600 focus:outline-none focus:ring-2 focus:ring-magnum-300"
+		>
+			Clear Filters
+		</button>
+	{/if}
 {/if}
 
 <style lang="postcss">
