@@ -102,9 +102,24 @@ function createPeaksStore() {
 		}
 	});
 
+	const fetchPeaksByIds = async (peakIds: string[]) => {
+		fetch(`${apiUrl}gridIndices?peakIds=${peakIds}`).then(async (response) => {
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+			const gridIndices: string[] = await response.json();
+			gridIndices.forEach((tileKey) => {
+				const indices = tileKey.split(',').map(Number);
+				fetchPeaksForTile(indices[0], indices[1], new AbortController());
+				queriedTiles.add(tileKey);
+			});
+		});
+	};
+
 	return {
 		subscribe,
-		fetchPeaks
+		fetchPeaks,
+		fetchPeaksByIds
 	};
 }
 

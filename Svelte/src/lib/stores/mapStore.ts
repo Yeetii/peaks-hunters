@@ -1,7 +1,7 @@
-import type { FeatureCollection } from 'geojson';
+import type { FeatureCollection, GeoJsonProperties, Geometry } from 'geojson';
 import type { Map as MaplibreMap, StyleSetterOptions } from 'maplibre-gl';
 import { get, writable } from 'svelte/store';
-import { selectedPeaksGroups } from './filtersStore';
+import { selectedPeaksGroups, type PeakGroup } from './filtersStore';
 import { peaksStore } from './peaksStore';
 
 export const MAPSTORE_CONTEXT_KEY = 'maplibre-map-store';
@@ -132,15 +132,14 @@ export const createMapStore = () => {
 
 	const filterPeaks = (
 		peaks: FeatureCollection,
-		summitedPeaks: FeatureCollection
+		summitedPeaks: FeatureCollection,
+		filters: PeakGroup[]
 	): { filteredPeaks: FeatureCollection; filteredSummitedPeaks: FeatureCollection } => {
-		const selectedGroups = get(selectedPeaksGroups);
-
-		if (selectedGroups.length === 0) {
+		if (filters.length === 0) {
 			return { filteredPeaks: peaks, filteredSummitedPeaks: summitedPeaks };
 		}
 
-		const selectedPeakIds = selectedGroups.flatMap((group) => group.peakIds);
+		const selectedPeakIds = filters.flatMap((group) => group.peakIds);
 
 		const filteredPeaks: FeatureCollection = {
 			type: 'FeatureCollection',
@@ -160,16 +159,22 @@ export const createMapStore = () => {
 	};
 
 	peaksStore.subscribe(({ peaks, summitedPeaks }) => {
-		const { filteredPeaks, filteredSummitedPeaks } = filterPeaks(peaks, summitedPeaks);
+		const filters = get(selectedPeaksGroups);
+		const { filteredPeaks, filteredSummitedPeaks } = filterPeaks(peaks, summitedPeaks, filters);
 		updateMapSources(filteredPeaks, filteredSummitedPeaks);
 	});
 
-	selectedPeaksGroups.subscribe(() => {
+	selectedPeaksGroups.subscribe((filters) => {
 		const { peaks, summitedPeaks } = get(peaksStore);
-		const { filteredPeaks, filteredSummitedPeaks } = filterPeaks(peaks, summitedPeaks);
+		const { filteredPeaks, filteredSummitedPeaks } = filterPeaks(peaks, summitedPeaks, filters);
+
+		const missingPeakIds = getMissingPeakIdsFromFilter(filteredPeaks, filters);
+		if (missingPeakIds.length > 0) {
+			peaksStore.fetchPeaksByIds(missingPeakIds);
+		}
+
 		updateMapSources(filteredPeaks, filteredSummitedPeaks);
 	});
-
 	return {
 		subscribe,
 		update,
@@ -178,3 +183,13 @@ export const createMapStore = () => {
 		setLayoutProperty
 	};
 };
+
+function getMissingPeakIdsFromFilter(
+	localPeaks: FeatureCollection<Geometry, GeoJsonProperties>,
+	filters: PeakGroup[]
+) {
+	const selectedPeakIds = new Set(filters.flatMap((group) => group.peakIds));
+	const filteredPeakIds = new Set(localPeaks.features.map((feature) => feature.id));
+	const missingPeakIds = selectedPeakIds.difference(filteredPeakIds);
+	return Array.from(missingPeakIds);
+}
