@@ -13,13 +13,9 @@ const queriedTiles = new Set<string>();
 const ongoingFetches = new Map<string, { promise: Promise<void>; controller: AbortController }>();
 
 function createPeaksStore() {
-	const initialPeaks = loadPeaksFromLocalStorage('peaks');
 	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
-
-	initialPeaks.features.forEach((peak) => {
-		const xyIndex = `${peak?.properties?.x},${peak?.properties?.y}`;
-		queriedTiles.add(xyIndex);
-	});
+	const emptyFeatureCollection: FeatureCollection = { type: 'FeatureCollection', features: [] };
+	const initialPeaks = emptyFeatureCollection;
 
 	const { subscribe, update } = writable({
 		peaks: initialPeaks,
@@ -35,7 +31,6 @@ function createPeaksStore() {
 					newPeaks.features.forEach((peak) => {
 						store.peaks.features.push(peak);
 					});
-					savePeaksToLocalStorage(store.peaks, store.summitedPeaks);
 					return store;
 				});
 			})
@@ -53,6 +48,7 @@ function createPeaksStore() {
 	const fetchPeaks = async (center: LngLat) => {
 		const tileIndices = wsg84ToTileIndices(center, tileZoom);
 
+		// TODO: Check if simply removing the older fetches would be sufficient, only allowing ~15  fetches at a time
 		// Cancel ongoing fetches that are too far away
 		for (const [key, { controller }] of ongoingFetches.entries()) {
 			const [x, y] = key.split(',').map(Number);
@@ -90,7 +86,7 @@ function createPeaksStore() {
 			const summitedPeaks = await response.json();
 			update((store) => {
 				store.summitedPeaks = summitedPeaks;
-				savePeaksToLocalStorage(store.peaks, store.summitedPeaks);
+				saveSummitedPeaksToLocalStorage(summitedPeaks);
 				return store;
 			});
 		});
@@ -125,8 +121,7 @@ function createPeaksStore() {
 
 export const peaksStore = createPeaksStore();
 
-function savePeaksToLocalStorage(peaks: FeatureCollection, summitedPeaks: FeatureCollection) {
-	localStorage.setItem('peaks', JSON.stringify(peaks));
+function saveSummitedPeaksToLocalStorage(summitedPeaks: FeatureCollection) {
 	localStorage.setItem('summitedPeaks', JSON.stringify(summitedPeaks));
 }
 
