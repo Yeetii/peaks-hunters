@@ -242,3 +242,10 @@
 		on:toggle={handleSidebarToggle}
 	/>
 </div>
+
+<style>
+	.map {
+		height: 100vh;
+		width: 100vw;
+	}
+</style>
