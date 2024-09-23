@@ -16,6 +16,7 @@
 	} from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { getContext, onMount } from 'svelte';
+	import '../../global.css';
 
 	let mapStore: MapStore = getContext(MAPSTORE_CONTEXT_KEY);
 
