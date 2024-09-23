@@ -1,5 +1,5 @@
 import { browser, dev } from '$app/environment';
-import type { FeatureCollection } from 'geojson';
+import type { Feature, FeatureCollection } from 'geojson';
 import { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
 import { activeSession } from './sessionStore';
@@ -14,8 +14,8 @@ const queriedTiles = new Set<string>();
 const ongoingFetches = new Map<string, { promise: Promise<void>; controller: AbortController }>();
 
 function createPeaksStore() {
-	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
 	const emptyFeatureCollection: FeatureCollection = { type: 'FeatureCollection', features: [] };
+	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
 	const initialPeaks = emptyFeatureCollection;
 
 	const { subscribe, update } = writable({
@@ -93,6 +93,18 @@ function createPeaksStore() {
 		});
 	};
 
+	const addSummitedPeak = (newSummitedPeak: Feature) => {
+		update((store) => {
+			if (store.summitedPeaks.features.find((peak) => peak.id === newSummitedPeak.id)) {
+				return store;
+			}
+
+			store.summitedPeaks.features.push(newSummitedPeak);
+			saveSummitedPeaksToLocalStorage(store.summitedPeaks);
+			return store;
+		});
+	};
+
 	activeSession.subscribe((activeSession) => {
 		if (activeSession) {
 			fetchSummitedPeaks();
@@ -120,7 +132,8 @@ function createPeaksStore() {
 	return {
 		subscribe,
 		fetchPeaks,
-		fetchPeaksByIds
+		fetchPeaksByIds,
+		addSummitedPeak
 	};
 }
 

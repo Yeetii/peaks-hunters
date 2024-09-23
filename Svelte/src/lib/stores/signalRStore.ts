@@ -1,6 +1,7 @@
 import { browser, dev } from '$app/environment';
 import * as signalR from '@microsoft/signalr';
 import { writable } from 'svelte/store';
+import { peaksStore } from './peaksStore';
 
 const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 
@@ -60,6 +61,11 @@ const connect = async () => {
 				store.lastEventReceived = json.summitedPeakNames;
 				return store;
 			});
+		});
+
+		connection.on('summitedPeak', (json) => {
+			console.log('Summited peak received ', json);
+			peaksStore.addSummitedPeak(json);
 		});
 
 		connection.start().then(() => {
