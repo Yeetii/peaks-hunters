@@ -58,7 +58,7 @@ const connect = async () => {
 			console.log('Summits Event received ', json);
 			signalRStore.update((store) => {
 				store.activitiesProcessed++;
-				store.lastEventReceived = json.summitedPeakNames;
+				store.lastEventReceived = json.summitedPeakNames.toString();
 				return store;
 			});
 		});
