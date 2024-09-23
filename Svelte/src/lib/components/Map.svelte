@@ -4,7 +4,7 @@
 	import peakIcon from '$lib/assets/peak.png';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import type { MapStore } from '$lib/stores';
-	import { activeSession, MAPSTORE_CONTEXT_KEY } from '$lib/stores';
+	import { MAPSTORE_CONTEXT_KEY } from '$lib/stores';
 	import { peaksStore } from '$lib/stores/peaksStore';
 	import maplibregl, {
 		AttributionControl,
@@ -25,10 +25,6 @@
 
 	let leftSidebarCollapsed = true;
 	const minFetchPeakZoom = 6.5;
-
-	activeSession.subscribe((active) => {
-		console.log('active', active);
-	});
 
 	function handleSidebarToggle(event: CustomEvent) {
 		const { side, collapsed } = event.detail;

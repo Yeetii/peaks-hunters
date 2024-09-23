@@ -30,7 +30,3 @@ const fetchPeaksGroups = async () => {
 };
 
 fetchPeaksGroups();
-
-selectedPeaksGroups.subscribe((selectedPeaksGroups) => {
-	console.log('Selected peaks groups:', selectedPeaksGroups);
-});

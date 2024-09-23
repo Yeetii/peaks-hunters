@@ -3,6 +3,7 @@ import type { FeatureCollection } from 'geojson';
 import { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
 import { activeSession } from './sessionStore';
+import { signalRStore } from './signalRStore';
 
 const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 const tileZoom = 11;
@@ -96,6 +97,10 @@ function createPeaksStore() {
 		if (activeSession) {
 			fetchSummitedPeaks();
 		}
+	});
+
+	signalRStore.subscribe((message) => {
+		console.log('SignalR message:', message);
 	});
 
 	const fetchPeaksByIds = async (peakIds: string[]) => {

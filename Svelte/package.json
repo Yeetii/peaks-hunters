@@ -51,6 +51,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@microsoft/signalr": "^8.0.7",
 		"@types/geojson": "^7946.0.14",
 		"dotenv": "^16.4.5",
 		"maplibre-gl": "^4.6.0"
