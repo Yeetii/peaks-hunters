@@ -95,15 +95,15 @@
 				data: peaks,
 				cluster: true,
 				clusterMaxZoom: 10,
-				clusterRadius: 100
+				clusterRadius: 80
 			});
 
 			map.addSource('summitedPeaks', {
 				type: 'geojson',
 				data: summitedPeaks,
 				cluster: true,
-				clusterMaxZoom: 7,
-				clusterRadius: 100
+				clusterMaxZoom: 8,
+				clusterRadius: 40
 			});
 
 			map.addLayer({
