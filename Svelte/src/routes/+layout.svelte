@@ -33,22 +33,22 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={title} />
 	<meta name="twitter:image" content={socialImage.image} />
-
-	<style>
-		html,
-		body {
-			margin: 0;
-			padding: 0;
-			min-height: 100vh;
-			/* mobile viewport bug fix */
-			min-height: -webkit-fill-available;
-			font-family: ProximaNova, sans-serif;
-		}
-
-		html {
-			height: -webkit-fill-available;
-		}
-	</style>
 </svelte:head>
 
 <slot />
+
+<style>
+	html,
+	body {
+		margin: 0;
+		padding: 0;
+		min-height: 100vh;
+		/* mobile viewport bug fix */
+		min-height: -webkit-fill-available;
+		font-family: ProximaNova, sans-serif;
+	}
+
+	html {
+		height: -webkit-fill-available;
+	}
+</style>

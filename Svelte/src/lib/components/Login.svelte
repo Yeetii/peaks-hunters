@@ -76,7 +76,7 @@
 				use:melt={$close}
 				aria-label="Close"
 				class="absolute right-[10px] top-[10px] inline-flex h-6 w-6
-                appearance-none items-center justify-center rounded-full text-magnum-800
+                appearance-none items-center justify-center rounded-full text-gray-800
                 hover:bg-magnum-100 focus:shadow-magnum-400"
 			>
 				X

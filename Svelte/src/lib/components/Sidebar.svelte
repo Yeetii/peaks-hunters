@@ -94,12 +94,11 @@
 			<Filters />
 		</div>
 	</div>
-	<div
-		role="button"
-		tabindex="0"
+	<button
+		type="button"
 		on:mouseenter={() => (showTooltip = true)}
 		on:mouseleave={() => (showTooltip = false)}
-		class={`absolute top-1/2 transform -translate-y-1/2 w-[1.3em] h-[1.3em] text-3xl font-sans text-gray-500 overflow-visible flex justify-center items-center bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] ${side === 'left' ? 'right-[-1.5em]' : 'left-[-1.5em]'} hover:text-[#0aa1cf] hover:cursor-pointer`}
+		class={`absolute top-1/2 -translate-y-1/2 w-[1.3em] h-[1.3em] bg-white rounded-[10px] shadow-[0_0_50px_-25px_black] text-3xl text-gray-500 hover:text-cyan-600 hover:cursor-pointer ${side === 'left' ? '-right-9' : '-left-9'} p-0 `}
 		on:click={toggleSidebar}
 		on:keydown={(e) => e.key === 'Enter' && toggleSidebar()}
 	>
@@ -113,11 +112,11 @@
 			<div
 				transition:fade={{ duration: 500 }}
 				class="absolute {side === 'left'
-					? 'left-[100%] ml-2'
-					: 'right-[100%] mr-2'} whitespace-nowrap bg-gray-800 text-white text-sm rounded px-2 py-1"
+					? 'left-full ml-2'
+					: 'right-full mr-2'} whitespace-nowrap bg-gray-800 text-white text-sm rounded px-2 py-1"
 			>
 				{collapsed ? 'Open' : 'Close'} sidebar (Ctrl+B)
 			</div>
 		{/if}
-	</div>
+	</button>
 </div>

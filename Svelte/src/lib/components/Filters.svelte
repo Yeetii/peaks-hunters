@@ -53,7 +53,7 @@
 
 <div class="flex flex-col gap-1">
 	<label use:melt={$label}>
-		<span class="text-sm font-medium text-magnum-800">Filter peaks by collection: </span>
+		<span class="text-sm font-medium text-gray-800">Filter peaks by collection: </span>
 		<div class="relative">
 			<input
 				use:melt={$input}
@@ -86,12 +86,12 @@
 				<li
 					use:melt={$option(toOption(peaksGroup))}
 					class="relative cursor-pointer scroll-my-2 rounded-md py-2 pl-4 pr-4
-          hover:bg-magnum-100
-          data-[highlighted]:bg-magnum-200 data-[highlighted]:text-magnum-800
+          hover:bg-gray-100
+          data-[highlighted]:bg-gray-200 data-[highlighted]:text-gray-800
             data-[disabled]:opacity-50"
 				>
 					{#if $isSelected(peaksGroup)}
-						<div class="check absolute left-2 top-1/2 z-10 text-magnum-800">✔︎</div>
+						<div class="check absolute left-2 top-1/2 z-10 text-gray-800">✔︎</div>
 					{/if}
 					<div class="pl-4">
 						<span class="font-medium">{peaksGroup.name}</span>
@@ -116,16 +116,17 @@
 	{#if $selectedPeaksGroups.length > 0}
 		<button
 			on:click={() => selected.set(undefined)}
-			class="mt-2 px-4 py-2 bg-magnum-500 text-white rounded-md hover:bg-magnum-600 focus:outline-none focus:ring-2 focus:ring-magnum-300"
+			class="mt-2 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300"
 		>
 			Clear Filters
 		</button>
 	{/if}
 {/if}
 
-<style lang="postcss">
+<style>
+	@reference "../../app.css";
 	.check {
-		@apply absolute left-2 top-1/2 text-magnum-500;
+		@apply absolute left-2 top-1/2 text-gray-500;
 		translate: 0 calc(-50% + 1px);
 	}
 </style>
