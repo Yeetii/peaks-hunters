@@ -1,12 +1,8 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { config } from '../../config';
 
-	const callBackUri = dev
-		? 'http://localhost:5173/authenticate'
-		: 'https://peakshunters.erikmagnusson.com/authenticate';
-	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 	var fetchFailed = false;
 	var waiting = false;
 
@@ -17,14 +13,16 @@
 		if (hasCode) {
 			var code = urlParams.get('code');
 			waiting = true;
-			fetch(`${apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then((r) => {
-				waiting = false;
-				if (!r.ok) {
-					fetchFailed = true;
-				} else {
-					goto('/');
+			fetch(`${config.apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then(
+				(r) => {
+					waiting = false;
+					if (!r.ok) {
+						fetchFailed = true;
+					} else {
+						goto('/');
+					}
 				}
-			});
+			);
 		}
 	});
 </script>
@@ -40,6 +38,6 @@
 {/if}
 
 <a
-	href="https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri={callBackUri}&scope=activity:read"
+	href="https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri={config.callBackUriAuth}&scope=activity:read"
 	>Go to strava</a
 >

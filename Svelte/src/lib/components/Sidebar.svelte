@@ -1,15 +1,13 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { activeSession } from '$lib/stores';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import { config } from '../../config';
 	import Filters from './Filters.svelte';
 
 	export let side: 'left' | 'right' = 'left';
 	export let collapsed = true;
 	export let content = '';
-
-	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 
 	const dispatch = createEventDispatcher();
 
@@ -36,7 +34,7 @@
 	onMount(() => {
 		activeSession.subscribe((value) => {
 			if (value) {
-				fetch(`${apiUrl}summitsStats`, {
+				fetch(`${config.apiUrl}summitsStats`, {
 					credentials: 'include'
 				})
 					.then((r) => {

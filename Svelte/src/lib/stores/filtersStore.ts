@@ -1,8 +1,6 @@
-import { dev } from '$app/environment';
 import type { Feature } from 'geojson';
 import { writable } from 'svelte/store';
-
-const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
+import { config } from '../../config';
 
 export interface PeakGroup {
 	id: string;
@@ -18,7 +16,7 @@ export const selectedPeaksGroups = writable<PeakGroup[]>([]);
 
 const fetchPeaksGroups = async () => {
 	try {
-		const response = await fetch(`${apiUrl}peaksGroups`);
+		const response = await fetch(`${config.apiUrl}peaksGroups`);
 		if (!response.ok) {
 			throw new Error('Failed to fetch peaks groups');
 		}

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import stravaButton from '$lib/assets/btn_strava_connectwith_orange.png';
 	import { activeSession } from '$lib/stores';
 	import { createDialog, melt } from '@melt-ui/svelte';
 	import { onMount } from 'svelte';
+	import { config } from '../../config';
 
 	const {
 		elements: { overlay, content, title, description, close, portalled },
@@ -13,9 +13,6 @@
 		role: 'alertdialog',
 		forceVisible: true
 	});
-
-	const callBackUri = dev ? 'http://localhost:5173/' : 'https://peakshunters.erikmagnusson.com/';
-	const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 
 	activeSession.subscribe((value) => {
 		$open = !value;
@@ -34,9 +31,11 @@
 		if (hasCode) {
 			$open = false;
 			var code = urlParams.get('code');
-			await fetch(`${apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then(() => {
-				goto('/');
-			});
+			await fetch(`${config.apiUrl}${code}/login`, { method: 'POST', credentials: 'include' }).then(
+				() => {
+					goto('/');
+				}
+			);
 		}
 	}
 
@@ -67,7 +66,7 @@
 
 			<div class="mt-6 flex justify-center">
 				<a
-					href="https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri={callBackUri}&scope=activity:read"
+					href="https://www.strava.com/oauth/authorize?client_id=26280&response_type=code&redirect_uri={config.callBackUri}&scope=activity:read"
 				>
 					<img src={stravaButton} alt="Connect with strava" class="inline-flex" />
 				</a>

@@ -1,9 +1,8 @@
-import { browser, dev } from '$app/environment';
+import { browser } from '$app/environment';
 import * as signalR from '@microsoft/signalr';
 import { writable } from 'svelte/store';
 import { peaksStore } from './peaksStore';
-
-const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
+import { config } from '../../config';
 
 const createSignalRStore = () => {
 	const { subscribe, update } = writable({
@@ -26,7 +25,7 @@ async function getSignalRAccessInfo() {
 		return;
 	}
 
-	const response = await fetch(`${apiUrl}connectSignalR`, {
+	const response = await fetch(`${config.apiUrl}connectSignalR`, {
 		headers: {
 			session: session
 		}

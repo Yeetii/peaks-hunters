@@ -1,11 +1,11 @@
-import { browser, dev } from '$app/environment';
+import { browser } from '$app/environment';
 import type { Feature, FeatureCollection } from 'geojson';
 import { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
 import { activeSession } from './sessionStore';
 import { signalRStore } from './signalRStore';
+import { config } from '../../config';
 
-const apiUrl = dev ? 'http://localhost:7071/api/' : 'https://geo-api.erikmagnusson.com/api/';
 const tileZoom = 11;
 const maxDistance = 100000;
 
@@ -25,7 +25,7 @@ function createPeaksStore() {
 
 	const fetchPeaksForTile = async (x: number, y: number, controller: AbortController) => {
 		const tileKey = `${x},${y}`;
-		await fetch(`${apiUrl}peaks/${x}/${y}`, { signal: controller.signal })
+		await fetch(`${config.apiUrl}peaks/${x}/${y}`, { signal: controller.signal })
 			.then((r) => r.json())
 			.then((newPeaks: FeatureCollection) => {
 				update((store) => {
@@ -78,7 +78,7 @@ function createPeaksStore() {
 	};
 
 	const fetchSummitedPeaks = async () => {
-		fetch(`${apiUrl}summitedPeaks`, {
+		fetch(`${config.apiUrl}summitedPeaks`, {
 			credentials: 'include'
 		}).then(async (response) => {
 			if (!response.ok) {
@@ -116,7 +116,7 @@ function createPeaksStore() {
 	});
 
 	const fetchPeaksByIds = async (peakIds: string[]) => {
-		fetch(`${apiUrl}gridIndices?peakIds=${peakIds}`).then(async (response) => {
+		fetch(`${config.apiUrl}gridIndices?peakIds=${peakIds}`).then(async (response) => {
 			if (!response.ok) {
 				throw new Error('Network response was not ok');
 			}
