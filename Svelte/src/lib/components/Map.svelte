@@ -174,26 +174,27 @@
 			function handlePopup(
 				e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }
 			) {
-				let groups: Record<string, boolean> = JSON.parse(e.features?.at(0)?.properties['groups']);
-				let groupNames = Object.keys(groups);
-				const description =
-					groupNames.length > 0
-						? '<b>Groups:</b> ' + groupNames.join(', ')
-						: "Peak doesn't belong to any groups";
+				if (!e.features || e.features.length === 0) return;
 
-				const coordinates = e.lngLat;
+				const feature = e.features[0];
 
-				// Ensure that if the map is zoomed out such that multiple
-				// copies of the feature are visible, the popup appears
-				// over the copy being pointed to.
-				while (Math.abs(e.lngLat.lng - coordinates.lng) > 180) {
-					coordinates.lng += e.lngLat.lng > coordinates.lng ? 360 : -360;
+				// Check if it's a cluster
+				if (feature.properties?.cluster) {
+					map.easeTo({
+						center: [e.lngLat.lng, e.lngLat.lat],
+						zoom: map.getZoom() + 2,
+						duration: 1000
+					});
+				} else {
+					// Zoom to individual feature
+					const geometry = feature.geometry as { type: 'Point'; coordinates?: [number, number] };
+					const center = geometry.coordinates ?? [e.lngLat.lng, e.lngLat.lat];
+					map.easeTo({
+						center: center,
+						zoom: Math.max(map.getZoom(), 13),
+						duration: 1000
+					});
 				}
-
-				new maplibregl.Popup()
-					.setLngLat(new LngLat(coordinates.lng, coordinates.lat))
-					.setHTML(description)
-					.addTo(map);
 			}
 
 			map.on('click', 'peaks', handlePopup);
@@ -216,10 +217,6 @@
 			});
 
 			peaksStore.fetchPeaks(map.getCenter());
-
-			map.on('zoom', () => {
-				console.log('zoom', map.getZoom());
-			});
 
 			map.on('move', () => {
 				if (map.getZoom() > minFetchPeakZoom) {
