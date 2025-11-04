@@ -7,3 +7,11 @@ declare namespace App {
 	// interface PageData {}
 	// interface Platform {}
 }
+
+declare module '$env/dynamic/public' {
+	export const env: {
+		PUBLIC_VITE_API_URL?: string;
+		PUBLIC_MAPTILER_KEY: string;
+		PUBLIC_API_URL?: string;
+	};
+}

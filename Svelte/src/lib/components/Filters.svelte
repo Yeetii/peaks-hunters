@@ -124,9 +124,10 @@
 {/if}
 
 <style>
-	@reference "../../app.css";
 	.check {
-		@apply absolute left-2 top-1/2 text-gray-500;
+		position: absolute;
+		color: #af9e03;
 		translate: 0 calc(-50% + 1px);
+		font-size: 25px;
 	}
 </style>

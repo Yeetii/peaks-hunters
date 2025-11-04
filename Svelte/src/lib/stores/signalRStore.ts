@@ -39,7 +39,14 @@ async function getSignalRAccessInfo() {
 const connect = async () => {
 	if (!browser) return; // Svelte dev backend should not connect to SignalR
 	try {
-		const { url, accessToken } = await getSignalRAccessInfo();
+		const accessInfo = await getSignalRAccessInfo();
+		if (!accessInfo) return; // No session available
+		
+		const { url, accessToken } = accessInfo;
+		if (!url || !accessToken) {
+			console.error('Invalid SignalR access info:', accessInfo);
+			return;
+		}
 
 		const connection = new signalR.HubConnectionBuilder()
 			.withUrl(url, {

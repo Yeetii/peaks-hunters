@@ -45,6 +45,11 @@
 	}
 
 	onMount(() => {
+		// Guard: when running in SSR (e.g. during certain test configurations) skip map initialization.
+		// Vitest jsdom should have window defined; if not, we avoid calling MapLibre which requires real DOM/WebGL.
+		if (typeof window === 'undefined') {
+			return;
+		}
 		var center = new LngLat(13.0509, 63.41698);
 		var zoom = 12;
 		const mapCenter = localStorage.getItem('mapCenter');
