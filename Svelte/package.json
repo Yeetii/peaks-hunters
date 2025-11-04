@@ -48,6 +48,7 @@
 	"dependencies": {
 		"@microsoft/signalr": "^9.0.6",
 		"@types/geojson": "^7946.0.16",
+		"cookie": "^1.0.2",
 		"dotenv": "^17.2.3",
 		"maplibre-gl": "^5.10.0"
 	},
