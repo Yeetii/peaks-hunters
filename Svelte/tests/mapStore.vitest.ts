@@ -6,7 +6,7 @@ describe('mapStore', () => {
 		const store = createMapStore();
 		expect(store).toBeTruthy();
 		// Basic shape assertions
-		expect(typeof (store as any).subscribe).toBe('function');
-		expect(typeof (store as any).setPaintProperty).toBe('function');
+		expect(typeof store.subscribe).toBe('function');
+		expect(typeof store.setPaintProperty).toBe('function');
 	});
 });

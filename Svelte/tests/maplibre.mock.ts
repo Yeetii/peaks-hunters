@@ -56,37 +56,41 @@ vi.mock('maplibre-gl', () => {
 	}
 	class MockMap {
 		_container: HTMLElement;
-		_style: { layers: any[] } = { layers: [] };
-		_sources: Record<string, any> = {};
-		_events: Record<string, Function[]> = {};
-		_images: Record<string, any> = {};
-		constructor(opts: any) {
+		_style: { layers: unknown[] } = { layers: [] };
+		_sources: Record<string, unknown> = {};
+		_events: Record<string, ((...args: unknown[]) => void)[]> = {};
+		_images: Record<string, unknown> = {};
+		constructor(opts: { container: HTMLElement }) {
 			this._container = opts.container;
 			setTimeout(() => this._emit('load'), 0);
 		}
-		_emit(evt: string, ...args: any[]) {
+		_emit(evt: string, ...args: unknown[]) {
 			(this._events[evt] || []).forEach((fn) => fn(...args));
 		}
-		on(event: string, cb: any) {
+		on(event: string, cb: (...args: unknown[]) => void) {
 			if (!this._events[event]) this._events[event] = [];
 			this._events[event].push(cb);
 		}
-		addControl(control: any) {
+		addControl(control: { onAdd?: (map: MockMap) => HTMLElement }) {
 			if (control?.onAdd) {
 				const el = control.onAdd(this);
 				this._container.appendChild(el);
 			}
 		}
-		addSource(name: string, source: any) {
-			this._sources[name] = { ...source, setData: (d: any) => (this._sources[name].data = d) };
+		addSource(name: string, source: unknown) {
+			this._sources[name] = {
+				...(source as object),
+				setData: (d: unknown) =>
+					(this._sources[name] = { ...(this._sources[name] as object), data: d })
+			};
 		}
-		addLayer(layer: any) {
+		addLayer(layer: unknown) {
 			this._style.layers.push(layer);
 		}
-		loadImage(_img: any) {
+		loadImage(_img: unknown) {
 			return Promise.resolve({ data: '' });
 		}
-		addImage(name: string, data: any) {
+		addImage(name: string, data: unknown) {
 			this._images[name] = data;
 		}
 		getCenter() {
@@ -96,12 +100,12 @@ vi.mock('maplibre-gl', () => {
 			return 12;
 		}
 		getCanvas() {
-			return { style: {} } as any;
+			return { style: {} } as HTMLCanvasElement;
 		}
 		easeTo() {}
 		triggerRepaint() {}
 		getStyle() {
-			return this._style as any;
+			return this._style;
 		}
 		getSource(name: string) {
 			return this._sources[name];

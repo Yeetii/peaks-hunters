@@ -17,7 +17,7 @@ global.fetch = vi.fn(() =>
 		ok: true,
 		json: () => Promise.resolve({ type: 'FeatureCollection', features: [] })
 	})
-) as any;
+) as unknown as typeof fetch;
 
 afterEach(() => {
 	document.body.innerHTML = '';
