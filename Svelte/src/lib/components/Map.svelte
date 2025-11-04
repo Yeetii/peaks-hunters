@@ -176,22 +176,22 @@
 				}
 			});
 
-			function handlePopup(
+			function handleClick(
 				e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }
 			) {
 				if (!e.features || e.features.length === 0) return;
 
 				const feature = e.features[0];
+				const properties = feature.properties || {};
 
-				// Check if it's a cluster
-				if (feature.properties?.cluster) {
+				if (properties.cluster) {
 					map.easeTo({
 						center: [e.lngLat.lng, e.lngLat.lat],
 						zoom: map.getZoom() + 2,
 						duration: 1000
 					});
 				} else {
-					// Zoom to individual feature
+					// Zoom to individual feature and show popup
 					const geometry = feature.geometry as { type: 'Point'; coordinates?: [number, number] };
 					const center = geometry.coordinates ?? [e.lngLat.lng, e.lngLat.lat];
 					map.easeTo({
@@ -199,11 +199,23 @@
 						zoom: Math.max(map.getZoom(), 13),
 						duration: 1000
 					});
+
+					const name = properties.name || 'Unknown Peak';
+					const summitedTimes = properties.summitsCount
+						? `Summited ${properties.summitsCount} times`
+						: '';
+
+					if (summitedTimes) {
+						new maplibregl.Popup()
+							.setLngLat(center)
+							.setHTML(`<strong>${name}</strong><br/>${summitedTimes}`)
+							.addTo(map);
+					}
 				}
 			}
 
-			map.on('click', 'peaks', handlePopup);
-			map.on('click', 'summitedPeaks', handlePopup);
+			map.on('click', 'peaks', handleClick);
+			map.on('click', 'summitedPeaks', handleClick);
 
 			map.on('mouseenter', 'peaks', () => {
 				map.getCanvas().style.cursor = 'pointer';
