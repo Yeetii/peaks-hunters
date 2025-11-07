@@ -3,6 +3,7 @@ import type { Map as MaplibreMap, StyleSetterOptions } from 'maplibre-gl';
 import { get, writable } from 'svelte/store';
 import { selectedPeaksGroups, type PeakGroup } from './filtersStore';
 import { peaksStore } from './peaksStore';
+import { pathsStore } from './pathsStore';
 
 export const MAPSTORE_CONTEXT_KEY = 'maplibre-map-store';
 
@@ -124,7 +125,20 @@ export const createMapStore = () => {
 				if (summitedPeaksSource) {
 					summitedPeaksSource.setData(summitedPeaks);
 				}
-				map.triggerRepaint();
+			}
+			return map;
+		});
+	};
+
+	const updatePathSources = (paths: FeatureCollection) => {
+		update((map) => {
+			if (map) {
+				const pathsSource = map.getSource('paths') as maplibregl.GeoJSONSource;
+
+				if (pathsSource) {
+					// Switching to updateData might improve performance
+					pathsSource.setData(paths);
+				}
 			}
 			return map;
 		});
@@ -175,6 +189,11 @@ export const createMapStore = () => {
 
 		updateMapSources(filteredPeaks, filteredSummitedPeaks);
 	});
+
+	pathsStore.subscribe(({ paths }) => {
+		updatePathSources(paths);
+	});
+
 	return {
 		subscribe,
 		update,

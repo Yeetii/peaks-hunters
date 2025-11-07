@@ -7,19 +7,16 @@ import { signalRStore } from './signalRStore';
 import { config } from '../../config';
 
 const tileZoom = 11;
-const maxDistance = 100000;
-
+const maxConcurrentFetches = 10;
 // By tile index "x,y"
 const queriedTiles = new Set<string>();
-const ongoingFetches = new Map<string, { promise: Promise<void>; controller: AbortController }>();
+const ongoingFetches = new Array<AbortController>();
 
 function createPeaksStore() {
-	const emptyFeatureCollection: FeatureCollection = { type: 'FeatureCollection', features: [] };
 	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
-	const initialPeaks = emptyFeatureCollection;
 
 	const { subscribe, update } = writable({
-		peaks: initialPeaks,
+		peaks: { type: 'FeatureCollection', features: [] } as FeatureCollection,
 		summitedPeaks: initialSummitedPeaks
 	});
 
@@ -43,23 +40,19 @@ function createPeaksStore() {
 					console.error('Fetch error:', error);
 				}
 			});
-		ongoingFetches.delete(tileKey);
+	};
+
+	const killOldFetches = () => {
+		while (ongoingFetches.length > maxConcurrentFetches) {
+			const controller = ongoingFetches.shift();
+			controller?.abort();
+		}
 	};
 
 	const fetchPeaks = async (center: LngLat) => {
 		const tileIndices = wsg84ToTileIndices(center, tileZoom);
 
-		// TODO: Check if simply removing the older fetches would be sufficient, only allowing ~15  fetches at a time
-		// Cancel ongoing fetches that are too far away
-		for (const [key, { controller }] of ongoingFetches.entries()) {
-			const [x, y] = key.split(',').map(Number);
-			const tileLocation = tileIndicesToWsg84({ x, y }, tileZoom);
-			if (calculateDistance(center, tileLocation) > maxDistance) {
-				controller.abort();
-			}
-		}
-
-		const fetchTasks = [];
+		killOldFetches();
 
 		for (let x = tileIndices.x - 1; x <= tileIndices.x + 1; x++) {
 			for (let y = tileIndices.y - 1; y <= tileIndices.y + 1; y++) {
@@ -67,14 +60,11 @@ function createPeaksStore() {
 				if (queriedTiles.has(tileKey)) continue;
 
 				const controller = new AbortController();
-				const fetchPromise = fetchPeaksForTile(x, y, controller);
-				ongoingFetches.set(tileKey, { promise: fetchPromise, controller });
-				fetchTasks.push(fetchPromise);
+				fetchPeaksForTile(x, y, controller);
+				ongoingFetches.push(controller);
 				queriedTiles.add(tileKey);
 			}
 		}
-
-		await Promise.all(fetchTasks);
 	};
 
 	const fetchSummitedPeaks = async () => {
@@ -156,28 +146,6 @@ function loadPeaksFromLocalStorage(collectionName: 'peaks' | 'summitedPeaks'): F
 		}
 	}
 	return emptyFeatureCollection;
-}
-
-function calculateDistance(coord1: LngLat, coord2: LngLat): number {
-	const R = 6371e3; // Earth's radius in meters
-	const φ1 = (coord1.lat * Math.PI) / 180;
-	const φ2 = (coord2.lat * Math.PI) / 180;
-	const Δφ = ((coord2.lat - coord1.lat) * Math.PI) / 180;
-	const Δλ = ((coord2.lng - coord1.lng) * Math.PI) / 180;
-
-	const a =
-		Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-		Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-	return R * c;
-}
-
-function tileIndicesToWsg84(tileIndices: { x: number; y: number }, zoom: number): LngLat {
-	const n = Math.pow(2, zoom);
-	const lon = (tileIndices.x / n) * 360 - 180;
-	const lat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * tileIndices.y) / n))) * 180) / Math.PI;
-	return new LngLat(lon, lat);
 }
 
 function wsg84ToTileIndices(coord: LngLat, zoom: number): { x: number; y: number } {

@@ -5,6 +5,7 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import type { MapStore } from '$lib/stores';
 	import { MAPSTORE_CONTEXT_KEY } from '$lib/stores';
+	import { pathsStore } from '$lib/stores/pathsStore';
 	import { peaksStore } from '$lib/stores/peaksStore';
 	import maplibregl, {
 		AttributionControl,
@@ -23,6 +24,7 @@
 	let mapContainer: HTMLDivElement;
 
 	$: ({ peaks, summitedPeaks } = $peaksStore);
+	$: ({ paths } = $pathsStore);
 
 	let leftSidebarCollapsed = true;
 	const minFetchPeakZoom = 6.5;
@@ -109,6 +111,25 @@
 				cluster: true,
 				clusterMaxZoom: 8,
 				clusterRadius: 40
+			});
+
+			map.addSource('paths', {
+				type: 'geojson',
+				data: paths
+			});
+
+			map.addLayer({
+				id: 'paths',
+				type: 'line',
+				source: 'paths',
+				layout: {
+					'line-join': 'round',
+					'line-cap': 'round'
+				},
+				paint: {
+					'line-color': '#ff8800',
+					'line-width': 3
+				}
 			});
 
 			map.addLayer({
@@ -234,6 +255,7 @@
 			});
 
 			peaksStore.fetchPeaks(map.getCenter());
+			pathsStore.fetchPaths(map.getCenter());
 
 			map.on('move', () => {
 				if (map.getZoom() > minFetchPeakZoom) {
@@ -242,6 +264,8 @@
 			});
 
 			map.on('moveend', () => {
+				pathsStore.fetchPaths(map.getCenter());
+
 				localStorage.setItem('mapCenter', JSON.stringify(map.getCenter()));
 				localStorage.setItem('mapZoom', map.getZoom().toString());
 			});
