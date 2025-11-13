@@ -7,3 +7,5 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 	}
 	return {};
 };
+
+export const prerender = false;
