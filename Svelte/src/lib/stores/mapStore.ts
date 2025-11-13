@@ -4,6 +4,7 @@ import { get, writable } from 'svelte/store';
 import { selectedPeaksGroups, type PeakGroup } from './filtersStore';
 import { peaksStore } from './peaksStore';
 import { pathsStore } from './pathsStore';
+import { activitiesStore } from './activitiesStore';
 
 export const MAPSTORE_CONTEXT_KEY = 'maplibre-map-store';
 
@@ -144,6 +145,20 @@ export const createMapStore = () => {
 		});
 	};
 
+	const updateActivitiesSources = (activities: FeatureCollection) => {
+		update((map) => {
+			if (map) {
+				const activitiesSource = map.getSource('activities') as maplibregl.GeoJSONSource;
+
+				if (activitiesSource) {
+					// Switching to updateData might improve performance
+					activitiesSource.setData(activities);
+				}
+			}
+			return map;
+		});
+	};
+
 	const filterPeaks = (
 		peaks: FeatureCollection,
 		summitedPeaks: FeatureCollection,
@@ -192,6 +207,10 @@ export const createMapStore = () => {
 
 	pathsStore.subscribe(({ paths }) => {
 		updatePathSources(paths);
+	});
+
+	activitiesStore.subscribe(({ activities }) => {
+		updateActivitiesSources(activities);
 	});
 
 	return {

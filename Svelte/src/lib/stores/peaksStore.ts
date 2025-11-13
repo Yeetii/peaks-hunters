@@ -5,6 +5,10 @@ import { writable } from 'svelte/store';
 import { activeSession } from './sessionStore';
 import { signalRStore } from './signalRStore';
 import { config } from '../../config';
+import {
+	loadFeatureCollectionFromLocalStorage,
+	saveFeatureCollectionToLocalStorage
+} from './localStorageHelper';
 
 const tileZoom = 11;
 const maxConcurrentFetches = 10;
@@ -13,7 +17,7 @@ const queriedTiles = new Set<string>();
 const ongoingFetches = new Array<AbortController>();
 
 function createPeaksStore() {
-	const initialSummitedPeaks = loadPeaksFromLocalStorage('summitedPeaks');
+	const initialSummitedPeaks = loadFeatureCollectionFromLocalStorage('summitedPeaks');
 
 	const { subscribe, update } = writable({
 		peaks: { type: 'FeatureCollection', features: [] } as FeatureCollection,
@@ -77,7 +81,7 @@ function createPeaksStore() {
 			const summitedPeaks = await response.json();
 			update((store) => {
 				store.summitedPeaks = summitedPeaks;
-				saveSummitedPeaksToLocalStorage(summitedPeaks);
+				saveFeatureCollectionToLocalStorage('summitedPeaks', summitedPeaks);
 				return store;
 			});
 		});
@@ -90,7 +94,7 @@ function createPeaksStore() {
 			}
 
 			store.summitedPeaks.features.push(newSummitedPeak);
-			saveSummitedPeaksToLocalStorage(store.summitedPeaks);
+			saveFeatureCollectionToLocalStorage('summitedPeaks', store.summitedPeaks);
 			return store;
 		});
 	};
@@ -128,25 +132,6 @@ function createPeaksStore() {
 }
 
 export const peaksStore = createPeaksStore();
-
-function saveSummitedPeaksToLocalStorage(summitedPeaks: FeatureCollection) {
-	localStorage.setItem('summitedPeaks', JSON.stringify(summitedPeaks));
-}
-
-function loadPeaksFromLocalStorage(collectionName: 'peaks' | 'summitedPeaks'): FeatureCollection {
-	const emptyFeatureCollection: FeatureCollection = { type: 'FeatureCollection', features: [] };
-	if (browser) {
-		const storedPeaks = localStorage.getItem(collectionName);
-		if (storedPeaks) {
-			try {
-				return JSON.parse(storedPeaks) as FeatureCollection;
-			} catch {
-				return emptyFeatureCollection;
-			}
-		}
-	}
-	return emptyFeatureCollection;
-}
 
 function wsg84ToTileIndices(coord: LngLat, zoom: number): { x: number; y: number } {
 	const lon = coord.lng;

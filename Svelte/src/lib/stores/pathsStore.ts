@@ -1,4 +1,3 @@
-import { browser } from '$app/environment';
 import type { FeatureCollection } from 'geojson';
 import { LngLat } from 'maplibre-gl';
 import { writable } from 'svelte/store';
@@ -12,7 +11,7 @@ const queriedTiles = new Set<string>();
 const ongoingFetches = new Array<AbortController>();
 
 function createPathsStore() {
-	const initialPaths = loadPathsFromLocalStorage('paths');
+	const initialPaths = { type: 'FeatureCollection', features: [] } as FeatureCollection; //loadPathsFromLocalStorage('paths');
 
 	const { subscribe, update } = writable({
 		paths: initialPaths
@@ -26,7 +25,6 @@ function createPathsStore() {
 				if (newPaths.features.length === 0) return;
 				update((store) => {
 					store.paths.features = [...store.paths.features, ...newPaths.features];
-					savePathsToLocalStorage(store.paths);
 					return store;
 				});
 			})
@@ -73,25 +71,6 @@ function createPathsStore() {
 }
 
 export const pathsStore = createPathsStore();
-
-function savePathsToLocalStorage(paths: FeatureCollection) {
-	localStorage.setItem('paths', JSON.stringify(paths));
-}
-
-function loadPathsFromLocalStorage(collectionName: 'paths'): FeatureCollection {
-	const emptyFeatureCollection: FeatureCollection = { type: 'FeatureCollection', features: [] };
-	if (browser) {
-		const storedPaths = localStorage.getItem(collectionName);
-		if (storedPaths) {
-			try {
-				return JSON.parse(storedPaths) as FeatureCollection;
-			} catch {
-				return emptyFeatureCollection;
-			}
-		}
-	}
-	return emptyFeatureCollection;
-}
 
 function wsg84ToTileIndices(coord: LngLat, zoom: number): { x: number; y: number } {
 	const lon = coord.lng;

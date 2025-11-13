@@ -15,7 +15,7 @@
 	});
 
 	activeSession.subscribe((value) => {
-		$open = !value;
+		$open = value === false;
 	});
 
 	function getCookie(name: string) {

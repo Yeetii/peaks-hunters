@@ -5,6 +5,7 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import type { MapStore } from '$lib/stores';
 	import { MAPSTORE_CONTEXT_KEY } from '$lib/stores';
+	import { activitiesStore } from '$lib/stores/activitiesStore';
 	import { pathsStore } from '$lib/stores/pathsStore';
 	import { peaksStore } from '$lib/stores/peaksStore';
 	import maplibregl, {
@@ -25,6 +26,7 @@
 
 	$: ({ peaks, summitedPeaks } = $peaksStore);
 	$: ({ paths } = $pathsStore);
+	$: ({ activities } = $activitiesStore);
 
 	let leftSidebarCollapsed = true;
 	const minFetchPeakZoom = 6.5;
@@ -118,6 +120,11 @@
 				data: paths
 			});
 
+			map.addSource('activities', {
+				type: 'geojson',
+				data: activities
+			});
+
 			map.addLayer({
 				id: 'paths',
 				type: 'line',
@@ -128,6 +135,20 @@
 				},
 				paint: {
 					'line-color': '#ff8800',
+					'line-width': 3
+				}
+			});
+
+			map.addLayer({
+				id: 'activities',
+				type: 'line',
+				source: 'activities',
+				layout: {
+					'line-join': 'round',
+					'line-cap': 'round'
+				},
+				paint: {
+					'line-color': '#ff88ff',
 					'line-width': 3
 				}
 			});
